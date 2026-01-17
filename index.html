@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Xperincestore | Unified eCommerce</title>
+    <link rel="icon" href="assets/favicon.png" />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body class="bg-slate-50 font-['Inter'] min-h-screen">
+
+
+    <nav
+      id="main-nav"
+      class="glass-nav sticky top-4 mx-4 my-4 px-6 py-4 rounded-2xl flex justify-between items-center z-50"
+    >
+      <div class="flex items-center gap-2">
+        <img src="assets/logo.png" alt="X" class="h-8 w-8 object-contain" />
+        <span class="font-bold text-xl text-blue-900 tracking-tight"
+          >Xperince<span class="text-blue-500 font-light">Store</span></span
+        >
+      </div>
+
+      <div
+        id="nav-links"
+        class="hidden lg:flex gap-8 text-sm font-medium text-slate-600"
+      ></div>
+
+      <div class="flex items-center gap-5">
+        <div
+          class="hidden sm:flex items-center bg-slate-100 rounded-full px-4 py-2 gap-2 border border-slate-200"
+        >
+          <i data-lucide="search" class="w-4 h-4 text-slate-400"></i>
+          <input
+            type="text"
+            placeholder="Search platform..."
+            class="bg-transparent text-xs outline-none w-32 focus:w-48 transition-all"
+          />
+        </div>
+        <div class="relative cursor-pointer group" onclick="window.location.hash = '/cart'">
+          <i data-lucide="shopping-cart" class="w-6 h-6 text-slate-700"></i>
+          <span
+            class="shopping-cart-badge absolute -top-2 -right-2 bg-blue-600 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full"
+            >0</span
+          >
+        </div>
+        <div class="relative">
+          <div
+            id="profile-trigger"
+            class="flex items-center gap-3 border-l pl-5 cursor-pointer"
+          >
+            <div class="text-right hidden md:block">
+              <p class="text-xs font-bold text-slate-800" id="user-name-label">
+                Guest User
+              </p>
+              <p
+                class="text-[10px] text-blue-500 uppercase font-bold"
+                id="user-role-label"
+              >
+                Consumer
+              </p>
+            </div>
+            <div
+              class="w-10 h-10 rounded-full bg-gradient-to-tr from-blue-600 to-blue-400 flex items-center justify-center text-white font-bold shadow-lg border-2 border-white"
+            >
+              <i data-lucide="user" class="w-5 h-5"></i>
+            </div>
+          </div>
+
+          <!-- User Dropdown Menu -->
+          <div
+            id="user-dropdown"
+            class="hidden absolute right-0 top-full mt-2 w-64 glass-card rounded-2xl shadow-2xl p-2 z-50 border border-white"
+          >
+            <!-- Logged Out State -->
+            <div id="dropdown-guest" class="space-y-1">
+              <a
+                href="#/login"
+                class="flex items-center gap-3 p-3 hover:bg-blue-50 rounded-xl transition-all group"
+              >
+                <i data-lucide="log-in" class="w-5 h-5 text-blue-600"></i>
+                <div>
+                  <p class="font-bold text-sm">Sign In</p>
+                  <p class="text-xs text-slate-500">Access your account</p>
+                </div>
+              </a>
+              <a
+                href="#/register"
+                class="flex items-center gap-3 p-3 hover:bg-blue-50 rounded-xl transition-all group"
+              >
+                <i data-lucide="user-plus" class="w-5 h-5 text-blue-600"></i>
+                <div>
+                  <p class="font-bold text-sm">Sign Up</p>
+                  <p class="text-xs text-slate-500">Create new account</p>
+                </div>
+              </a>
+            </div>
+
+            <!-- Logged In State -->
+            <div id="dropdown-user" class="hidden space-y-1">
+              <div class="px-3 py-2 border-b border-slate-200 mb-2">
+                <p class="font-bold text-sm" id="dropdown-user-name">John Doe</p>
+                <p class="text-xs text-slate-500" id="dropdown-user-email">john@example.com</p>
+              </div>
+              <a
+                href="#/account"
+                class="flex items-center gap-3 p-3 hover:bg-blue-50 rounded-xl transition-all"
+              >
+                <i data-lucide="layout-dashboard" class="w-5 h-5 text-slate-600"></i>
+                <span class="text-sm font-medium">Dashboard</span>
+              </a>
+              <a
+                href="#/account/orders"
+                class="flex items-center gap-3 p-3 hover:bg-blue-50 rounded-xl transition-all"
+              >
+                <i data-lucide="package" class="w-5 h-5 text-slate-600"></i>
+                <span class="text-sm font-medium">My Orders</span>
+              </a>
+              <a
+                href="#/account/wishlist"
+                class="flex items-center gap-3 p-3 hover:bg-blue-50 rounded-xl transition-all"
+              >
+                <i data-lucide="heart" class="w-5 h-5 text-slate-600"></i>
+                <span class="text-sm font-medium">Wishlist</span>
+              </a>
+              <a
+                href="#/account/profile"
+                class="flex items-center gap-3 p-3 hover:bg-blue-50 rounded-xl transition-all"
+              >
+                <i data-lucide="settings" class="w-5 h-5 text-slate-600"></i>
+                <span class="text-sm font-medium">Settings</span>
+              </a>
+              <div class="border-t border-slate-200 mt-2 pt-2">
+                <button
+                  id="logout-btn"
+                  class="flex items-center gap-3 p-3 hover:bg-red-50 rounded-xl transition-all w-full text-left text-red-600"
+                >
+                  <i data-lucide="log-out" class="w-5 h-5"></i>
+                  <span class="text-sm font-medium">Logout</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </nav>
+
+    <main id="app-viewport" class="px-6 pb-24">
+      <div id="loading-state" class="flex items-center justify-center h-96">
+        <div
+          class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"
+        ></div>
+      </div>
+    </main>
+
+    <div id="chat-container" class="fixed bottom-8 right-8 z-[1000]">
+      <button
+        id="chat-toggle"
+        class="bg-blue-600 text-white p-4 rounded-full shadow-2xl hover:bg-blue-700 hover:scale-110 active:scale-95 transition-all group"
+      >
+        <i data-lucide="message-square" class="group-hover:hidden"></i>
+        <i
+          data-lucide="sparkles"
+          class="hidden group-hover:block animate-pulse"
+        ></i>
+      </button>
+
+      <div
+        id="chat-window"
+        class="hidden absolute bottom-20 right-0 w-[350px] md:w-[400px] h-[500px] glass-card rounded-3xl shadow-2xl flex flex-col overflow-hidden border border-white/50"
+      >
+        <div
+          class="bg-blue-600 p-5 text-white flex justify-between items-center"
+        >
+          <div class="flex items-center gap-3">
+            <div class="w-2 h-2 bg-green-400 rounded-full animate-ping"></div>
+            <div>
+              <p class="text-sm font-bold leading-none" id="chat-header-name">
+                Xperince Assistant
+              </p>
+              <p class="text-[10px] opacity-80 mt-1" id="chat-header-status">
+                Online • AI Agent
+              </p>
+            </div>
+          </div>
+          <button
+            id="chat-close"
+            class="hover:bg-blue-500 p-1 rounded-lg transition-colors"
+          >
+            <i data-lucide="x" class="w-5 h-5"></i>
+          </button>
+        </div>
+
+        <div
+          id="chat-content"
+          class="flex-1 p-5 overflow-y-auto space-y-4 bg-white/30"
+        ></div>
+
+        <div
+          class="p-4 bg-white/50 border-t border-white/50 flex gap-2 items-center"
+        >
+          <button class="text-slate-400 hover:text-blue-500">
+            <i data-lucide="paperclip" class="w-5 h-5"></i>
+          </button>
+          <input
+            type="text"
+            id="chat-input"
+            placeholder="Type your message..."
+            class="flex-1 bg-white border border-slate-200 rounded-xl px-4 py-2 text-sm outline-none focus:border-blue-400 transition-all"
+          />
+          <button
+            id="send-msg"
+            class="bg-blue-600 text-white p-2 rounded-xl hover:bg-blue-700"
+          >
+            <i data-lucide="send" class="w-5 h-5"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="bg-slate-900 text-white mt-24 px-6 py-12">
+      <div class="max-w-7xl mx-auto">
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-8 mb-8">
+          <!-- Brand -->
+          <div>
+            <div class="flex items-center gap-2 mb-4">
+              <img src="assets/logo.png" alt="X" class="h-8 w-8 object-contain" />
+              <span class="font-bold text-xl">
+                Xperince<span class="text-blue-400 font-light">Store</span>
+              </span>
+            </div>
+            <p class="text-slate-400 text-sm mb-4">
+              The world's first unified multi-tier commerce platform.
+            </p>
+            <div class="flex gap-3">
+              <a href="#" class="w-10 h-10 bg-slate-800 rounded-full flex items-center justify-center hover:bg-blue-600 transition-all">
+                <i data-lucide="twitter" class="w-5 h-5"></i>
+              </a>
+              <a href="#" class="w-10 h-10 bg-slate-800 rounded-full flex items-center justify-center hover:bg-blue-600 transition-all">
+                <i data-lucide="facebook" class="w-5 h-5"></i>
+              </a>
+              <a href="#" class="w-10 h-10 bg-slate-800 rounded-full flex items-center justify-center hover:bg-blue-600 transition-all">
+                <i data-lucide="linkedin" class="w-5 h-5"></i>
+              </a>
+              <a href="#" class="w-10 h-10 bg-slate-800 rounded-full flex items-center justify-center hover:bg-blue-600 transition-all">
+                <i data-lucide="instagram" class="w-5 h-5"></i>
+              </a>
+            </div>
+          </div>
+
+          <!-- Quick Links -->
+          <div>
+            <h3 class="font-bold mb-4">Quick Links</h3>
+            <ul class="space-y-2 text-sm text-slate-400">
+              <li><a href="#/" class="hover:text-white transition-colors">Home</a></li>
+              <li><a href="#/products" class="hover:text-white transition-colors">All Products</a></li>
+              <li><a href="#/cart" class="hover:text-white transition-colors">Shopping Cart</a></li>
+              <li><a href="#/account/wishlist" class="hover:text-white transition-colors">Wishlist</a></li>
+              <li><a href="#/account" class="hover:text-white transition-colors">My Account</a></li>
+            </ul>
+          </div>
+
+          <!-- Support -->
+          <div>
+            <h3 class="font-bold mb-4">Support</h3>
+            <ul class="space-y-2 text-sm text-slate-400">
+              <li><a href="#/about" class="hover:text-white transition-colors">About Us</a></li>
+              <li><a href="#/contact" class="hover:text-white transition-colors">Contact</a></li>
+              <li><a href="#/faq" class="hover:text-white transition-colors">FAQ</a></li>
+              <li><a href="#/shipping" class="hover:text-white transition-colors">Shipping & Returns</a></li>
+            </ul>
+          </div>
+
+          <!-- Legal -->
+          <div>
+            <h3 class="font-bold mb-4">Legal</h3>
+            <ul class="space-y-2 text-sm text-slate-400">
+              <li><a href="#/privacy" class="hover:text-white transition-colors">Privacy Policy</a></li>
+              <li><a href="#/terms" class="hover:text-white transition-colors">Terms of Service</a></li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- Bottom Bar -->
+        <div class="border-t border-slate-800 pt-8 flex flex-col md:flex-row justify-between items-center gap-4 text-sm text-slate-400">
+          <p>© 2026 Xperiencestore. All rights reserved.</p>
+          <div class="flex gap-6">
+            <span>English</span>
+            <span>USD $</span>
+          </div>
+        </div>
+      </div>
+    </footer>
+
+    <div
+      id="login-modal"
+      class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[2000] flex items-center justify-center p-4"
+    ></div>
+
+    <script src="script.js" type="module"></script>
+  </body>
+</html>
