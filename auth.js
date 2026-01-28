@@ -20,8 +20,8 @@ export const Auth = {
         }
 
         // Hardcoded Warehouse
-        if (email === 'warehouse@gmail.com' && password === '123456') {
-            Auth.setUserSession('warehouse', { email: email, name: 'Warehouse Manager' });
+        if (email === 'warehouse@gmail.com' && password === '12345') {
+            Auth.setUserSession('warehouse', { email: email, name: 'ike wisdom' });
             return { success: true, role: 'warehouse' };
         }
 
