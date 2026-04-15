@@ -7,6 +7,72 @@ import { State } from './state.js';
 import { Router } from './router.js';
 
 export const Components = {
+    // Search Suggestions Component (Glassmorphism)
+    SearchSuggestions(results, query) {
+        if (!results || results.length === 0) {
+            return `
+                <div class="glass-card bg-white/90 backdrop-blur-xl border border-white/50 rounded-2xl p-4 shadow-2xl">
+                    <p class="text-sm text-slate-500 italic">No matches found for "${query}"</p>
+                </div>
+            `;
+        }
+
+        return `
+            <div class="glass-card bg-white/90 backdrop-blur-xl border border-white/50 rounded-2xl shadow-2xl overflow-hidden animate-in fade-in slide-in-from-top-2 duration-300">
+                <div class="p-3 border-b border-slate-100 flex justify-between items-center">
+                    <span class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Top Results</span>
+                    <span class="text-[10px] bg-blue-100 text-blue-600 px-2 py-0.5 rounded-full font-bold">${results.length} found</span>
+                </div>
+                <div class="max-h-[400px] overflow-y-auto">
+                    ${results.map(item => `
+                        <div onclick="window.handleSuggestionClick('${item.type}', '${item.id || item.slug}')" class="p-3 hover:bg-blue-50/80 cursor-pointer flex items-center gap-4 group transition-all">
+                            <div class="w-10 h-10 rounded-lg overflow-hidden bg-slate-100 flex-shrink-0">
+                                <img src="${item.image || 'assets/placeholder.png'}" class="w-full h-full object-cover group-hover:scale-110 transition-transform" onerror="this.src='https://ui-avatars.com/api/?name=${item.name}&background=random'">
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <h4 class="text-sm font-bold text-slate-800 truncate">${item.name.replace(new RegExp(query, 'gi'), match => `<span class="text-blue-600 underline">${match}</span>`)}</h4>
+                                <p class="text-[10px] text-slate-400 flex items-center gap-1">
+                                    <span class="font-bold text-slate-500">${item.type.toUpperCase()}</span> 
+                                    ${item.category ? `• ${item.category}` : ''}
+                                </p>
+                            </div>
+                            <div class="opacity-0 group-hover:opacity-100 transition-opacity">
+                                <i data-lucide="arrow-up-left" class="w-4 h-4 text-blue-500 rotate-45"></i>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+                <div class="p-2 bg-slate-50/50 text-center">
+                    <button onclick="Router.navigate('/search?q=${encodeURIComponent(query)}')" class="text-xs font-bold text-blue-600 hover:text-blue-700">View all results <i data-lucide="chevron-right" class="w-3 h-3 inline"></i></button>
+                </div>
+            </div>
+        `;
+    },
+
+    // Dual Handle Range Slider (Price Filter)
+    DualHandleSlider(minId, maxId, initialMin, initialMax) {
+        return `
+            <div class="price-slider-container px-2 py-4">
+                <div class="relative h-1 bg-slate-100 rounded-full mb-6">
+                    <div id="slider-track" class="absolute h-full bg-blue-500 rounded-full" style="left: 0%; right: 0%;"></div>
+                    <input type="range" id="${minId}" min="0" max="1000000" value="${initialMin}" step="100" class="absolute w-full h-1 bg-transparent pointer-events-none appearance-none cursor-pointer slider-thumb-min">
+                    <input type="range" id="${maxId}" min="0" max="1000000" value="${initialMax}" step="100" class="absolute w-full h-1 bg-transparent pointer-events-none appearance-none cursor-pointer slider-thumb-max">
+                </div>
+                <div class="flex justify-between items-center gap-2">
+                    <div class="flex-1">
+                        <label class="text-[10px] font-black text-slate-400 uppercase block mb-1">Min (₦)</label>
+                        <input type="number" id="${minId}-val" value="${initialMin}" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs font-bold outline-none focus:border-blue-500">
+                    </div>
+                    <span class="text-slate-300 mt-4">-</span>
+                    <div class="flex-1">
+                        <label class="text-[10px] font-black text-slate-400 uppercase block mb-1">Max (₦)</label>
+                        <input type="number" id="${maxId}-val" value="${initialMax}" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs font-bold outline-none focus:border-blue-500">
+                    </div>
+                </div>
+            </div>
+        `;
+    },
+
     // Product Card Component
     ProductCard(product, options = {}) {
         const { showAddToCart = true, showQuickView = true, layout = 'grid' } = options;

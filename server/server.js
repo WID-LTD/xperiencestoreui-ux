@@ -18,6 +18,7 @@ const corsOptions = {
             'http://localhost:5000',
             'http://127.0.0.1:5000',
             'https://xperiencestore.store',
+            'https://www.xperiencestore.store',
             ...frontendUrls,
             process.env.R2_PUBLIC_URL
         ].filter(Boolean);
