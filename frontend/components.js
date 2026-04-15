@@ -577,7 +577,8 @@ export const Components = {
     },
 
     addToCartAction(productId) {
-        const qty = parseInt(document.querySelector('input[type="number"]')?.value || 1);
+        const qtyInput = document.getElementById('product-qty-input');
+        const qty = qtyInput ? parseInt(qtyInput.value) || 1 : 1;
         const product = window.currentProducts?.find(p => p.id === productId);
         if (product) {
             State.addToCart(product, qty);
@@ -588,7 +589,8 @@ export const Components = {
     },
 
     buyNowAction(productId) {
-        const qty = parseInt(document.querySelector('input[type="number"]')?.value || 1);
+        const qtyInput = document.getElementById('product-qty-input');
+        const qty = qtyInput ? parseInt(qtyInput.value) || 1 : 1;
         const product = window.currentProducts?.find(p => p.id === productId);
         if (product) {
             State.addToCart(product, qty);
