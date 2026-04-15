@@ -96,8 +96,8 @@ const initializePayment = async (req, res) => {
         let gatewayResponse;
 
         // Build return URLs for callbacks
-        const successUrl = `${FRONTEND_URL}/#/payment/verify?gateway=${selectedGateway}&ref=${transactionRef}&status=success`;
-        const cancelUrl = `${FRONTEND_URL}/#/payment/verify?gateway=${selectedGateway}&ref=${transactionRef}&status=cancel`;
+        const successUrl = `${FRONTEND_URL}/#/payment-status?gateway=${selectedGateway}`;
+        const cancelUrl = `${FRONTEND_URL}/#/payment-status?gateway=${selectedGateway}&status=cancel`;
 
         // Fetch user info (needed by some gateways)
         const userResult = await db.query('SELECT email, name, phone FROM users WHERE id = $1', [userId]);

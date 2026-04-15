@@ -206,7 +206,7 @@ function initializeRouter() {
         '/gift-cards/buy': () => renderPage(Pages.giftcards.purchase()),
         '/gift-card/:code': (params) => renderPage(Pages.giftcards.details(params.code)),
         '/track-order': () => renderPage(Pages.tracking()),
-        '/payment/verify': (params) => renderPage(Pages.paymentVerify(params)),
+        '/payment-status': (params) => renderPage(Pages.paymentVerify(params)),
         '/payment/failed': () => renderPage(Pages.paymentFailed()),
         '/payment/cancelled': () => renderPage(Pages.paymentFailed()),
 

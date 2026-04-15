@@ -14,11 +14,18 @@ export const Pages = {
     // ==================== SHARED PAGES ====================
 
     paymentVerify(params) {
-        const { gateway, ref, status } = params;
+        // Parse possible Paystack root URL query parameters
+        const searchParams = new URLSearchParams(window.location.search);
+        
+        const gateway = params.gateway || searchParams.get('gateway') || 'paystack';
+        const status = params.status || 'success';
+        const ref = params.ref || searchParams.get('reference') || searchParams.get('trxref') || params.reference;
 
         // === STEP 1: Immediately clean the messy Paystack query params from the URL ===
-        // This removes ?trxref=...&reference=... from the browser address bar right away.
-        window.history.replaceState(null, '', '/#/payment/verify');
+        // This physically removes ?trxref=...&reference=... from the browser address bar right away.
+        if (window.history && window.history.replaceState) {
+            window.history.replaceState(null, '', '/#/payment-status');
+        }
 
         // === STEP 2: Background verification with server ===
         setTimeout(async () => {
