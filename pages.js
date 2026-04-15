@@ -18,9 +18,7 @@ export const Pages = {
 
         // === STEP 1: Immediately clean the messy Paystack query params from the URL ===
         // This removes ?trxref=...&reference=... from the browser address bar right away.
-        if (window.history && window.history.replaceState) {
-            window.history.replaceState(null, '', window.location.pathname + '#/payment/verify');
-        }
+        window.history.replaceState(null, '', '/#/payment/verify');
 
         // === STEP 2: Background verification with server ===
         setTimeout(async () => {
@@ -52,8 +50,8 @@ export const Pages = {
                     if (successEl) successEl.classList.remove('hidden');
                     // Auto-navigate after 2s
                     setTimeout(() => {
-                        // Use replaceState to avoid polluting history, then navigate cleanly
-                        Router.navigate('/account/orders', true);
+                        window.location.href = '/#/account/orders'; 
+                        window.location.reload();
                     }, 2000);
                 } else {
                     if (verifyingEl) verifyingEl.classList.add('hidden');
@@ -88,7 +86,7 @@ export const Pages = {
                     </div>
                     <h1 class="text-3xl font-bold mb-3 text-slate-900">Payment Successful!</h1>
                     <p class="text-slate-500 mb-8">Your order has been placed and is being processed.</p>
-                    <button onclick="Router.navigate('/account/orders', true)" class="w-full bg-blue-600 text-white py-4 rounded-2xl font-bold hover:bg-blue-700 transition-all shadow-lg shadow-blue-200 flex items-center justify-center gap-2">
+                    <button onclick="window.location.href = '/#/account/orders'; window.location.reload();" class="w-full bg-blue-600 text-white py-4 rounded-2xl font-bold hover:bg-blue-700 transition-all shadow-lg shadow-blue-200 flex items-center justify-center gap-2">
                         <i data-lucide="package" class="w-5 h-5"></i>
                         View My Orders
                     </button>
@@ -1413,7 +1411,7 @@ export const Pages = {
                                     <div class="flex justify-between items-center">
                                         <div>
                                             <p class="text-xs font-bold text-blue-600 uppercase">B2B Bulk Pricing</p>
-                                            <p class="text-3xl font-bold">$${(Number(product.bulkPrice) || 0).toFixed(2)} <span class="text-sm font-normal text-slate-400">/ unit</span></p>
+                                            <p class="text-3xl font-bold">${State.formatCurrency(product.bulkPrice)} <span class="text-sm font-normal text-slate-400">/ unit</span></p>
                                         </div>
                                         <div class="text-right">
                                             <p class="text-xs text-slate-500">Min. Order: ${product.moq} Units</p>
@@ -1423,8 +1421,8 @@ export const Pages = {
                                 ` : `
                                     <div class="flex items-center gap-4">
                                         <div>
-                                            <p class="text-xs font-bold text-slate-400 uppercase line-through">${State.formatCurrency(Number(price) * 1.3, 'USD')}</p>
-                                            <p class="text-4xl font-bold text-slate-800">$${(Number(price) || 0).toFixed(2)}</p>
+                                            <p class="text-xs font-bold text-slate-400 uppercase line-through">${State.formatCurrency(Number(price) * 1.3)}</p>
+                                            <p class="text-4xl font-bold text-slate-800">${State.formatCurrency(price)}</p>
                                         </div>
                                         <span class="bg-red-500 text-white px-3 py-1 rounded-full text-sm font-bold shadow-sm animate-pulse">Save 30%</span>
                                     </div>
@@ -1448,7 +1446,7 @@ export const Pages = {
                             <div class="flex flex-col sm:flex-row gap-4 mb-6">
                                 <div class="flex items-center border rounded-xl overflow-hidden w-full sm:w-auto justify-center">
                                     <button onclick="this.nextElementSibling.stepDown()" class="px-4 py-3 hover:bg-slate-100 transition-all text-lg font-bold w-12">-</button>
-                                    <input type="number" value="1" min="1" class="w-16 text-center border-x outline-none py-3 font-bold bg-white">
+                                    <input type="number" id="product-qty-input" value="1" min="1" class="w-16 text-center border-x outline-none py-3 font-bold bg-white">
                                     <button onclick="this.previousElementSibling.stepUp()" class="px-4 py-3 hover:bg-slate-100 transition-all text-lg font-bold w-12">+</button>
                                 </div>
                                 <button onclick="Components.addToCartAction(${product.id})" class="flex-1 bg-blue-600 text-white py-3 sm:py-4 rounded-xl font-bold shadow-lg hover:bg-blue-700 hover:shadow-blue-500/30 transition-all flex items-center justify-center gap-2">
@@ -1603,8 +1601,8 @@ export const Pages = {
                                         </div>
                                     </div>
                                     <div class="text-center sm:text-right w-full sm:w-auto mt-2 sm:mt-0 pt-4 sm:pt-0 border-t sm:border-t-0 border-slate-100">
-                                        <p class="text-xl font-bold text-blue-600">${State.formatCurrency((Number(item.price) || 0) * (Number(item.quantity) || 0), 'USD')}</p>
-                                        <p class="text-xs text-slate-400 mt-1">${State.formatCurrency(Number(item.price) || 0, 'USD')} each</p>
+                                        <p class="text-xl font-bold text-blue-600">${State.formatCurrency((Number(item.price) || 0) * (Number(item.quantity) || 0))}</p>
+                                        <p class="text-xs text-slate-400 mt-1">${State.formatCurrency(Number(item.price) || 0)} each</p>
                                     </div>
                                 </div>
                             `).join('')}
@@ -1616,7 +1614,7 @@ export const Pages = {
                                 <div class="space-y-3 text-sm border-b pb-4 mb-4">
                                     <div class="flex justify-between">
                                         <span class="text-slate-600">Subtotal</span>
-                                        <span class="font-bold">$${(Number(total) || 0).toFixed(2)}</span>
+                                        <span class="font-bold">${State.formatCurrency(total)}</span>
                                     </div>
                                     <div class="flex justify-between">
                                         <span class="text-slate-600">Shipping</span>
@@ -1624,12 +1622,12 @@ export const Pages = {
                                     </div>
                                     <div class="flex justify-between">
                                         <span class="text-slate-600">Tax (estimated)</span>
-                                        <span class="font-bold">${State.formatCurrency((Number(total) || 0) * 0.08, 'USD')}</span>
+                                        <span class="font-bold">${State.formatCurrency((Number(total) || 0) * 0.08)}</span>
                                     </div>
                                 </div>
                                 <div class="flex justify-between text-xl font-bold mb-6">
                                     <span>Total</span>
-                                    <span class="text-blue-600">${State.formatCurrency((Number(total) || 0) * 1.08, 'USD')}</span>
+                                    <span class="text-blue-600">${State.formatCurrency((Number(total) || 0) * 1.08)}</span>
                                 </div>
                             <button onclick="Router.navigate('/checkout')" class="w-full bg-blue-600 text-white p-4 rounded-xl font-bold shadow-lg hover:bg-blue-700 transition-all mb-3">
                                 Proceed to Checkout
