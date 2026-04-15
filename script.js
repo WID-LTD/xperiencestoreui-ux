@@ -349,6 +349,9 @@ function renderPage(html) {
     const viewport = document.getElementById('app-viewport');
     viewport.innerHTML = html;
     lucide.createIcons();
+    
+    // Initialize price sliders if on products page
+    if (window.initPriceSliders) window.initPriceSliders();
 
     // Update cart badge after render
     Components.updateCartBadge();
@@ -407,18 +410,86 @@ function setupNavigation() {
         `).join('');
     }
 
-    // Setup search functionality
-    const searchInput = document.querySelector('input[placeholder="Search platform..."]');
+    // Advanced Search & Suggestions
+    const searchInput = document.getElementById('global-search-input');
+    const suggestionsContainer = document.getElementById('search-suggestions');
+
     if (searchInput) {
+        let debounceTimer;
+
+        searchInput.addEventListener('input', (e) => {
+            clearTimeout(debounceTimer);
+            const query = e.target.value.trim().toLowerCase();
+
+            if (query.length < 2) {
+                suggestionsContainer.classList.add('hidden');
+                return;
+            }
+
+            debounceTimer = setTimeout(() => {
+                const products = State.get().products || [];
+                
+                // Advanced Smart Searching Algorithm (Weighted results)
+                const results = products.map(p => {
+                    let weight = 0;
+                    const name = p.name.toLowerCase();
+                    const cat = (p.category || '').toLowerCase();
+                    const desc = (p.description || '').toLowerCase();
+
+                    if (name === query) weight += 100;
+                    else if (name.startsWith(query)) weight += 50;
+                    else if (name.includes(query)) weight += 20;
+                    
+                    if (cat.includes(query)) weight += 15;
+                    if (desc.includes(query)) weight += 5;
+
+                    return { ...p, weight };
+                })
+                .filter(p => p.weight > 0)
+                .sort((a, b) => b.weight - a.weight)
+                .slice(0, 6)
+                .map(p => ({
+                    id: p.id,
+                    name: p.name,
+                    image: State.getMediaUrl(p.id, 0),
+                    type: 'product',
+                    category: p.category,
+                    weight: p.weight
+                }));
+
+                suggestionsContainer.innerHTML = Components.SearchSuggestions(results, query);
+                suggestionsContainer.classList.remove('hidden');
+                lucide.createIcons();
+            }, 300);
+        });
+
         searchInput.addEventListener('keypress', (e) => {
             if (e.key === 'Enter') {
                 const query = searchInput.value.trim();
                 if (query) {
+                    suggestionsContainer.classList.add('hidden');
                     Router.navigate(`/search?q=${encodeURIComponent(query)}`);
                 }
             }
         });
+
+        // Hide suggestions when clicking outside
+        document.addEventListener('click', (e) => {
+            if (!searchInput.contains(e.target) && !suggestionsContainer.contains(e.target)) {
+                suggestionsContainer.classList.add('hidden');
+            }
+        });
     }
+
+    // Global helper for suggestions
+    window.handleSuggestionClick = (type, id) => {
+        suggestionsContainer.classList.add('hidden');
+        if (type === 'product') {
+            Router.navigate(`/product/${id}`);
+        } else if (type === 'category') {
+            Router.navigate(`/category/${id}`);
+        }
+    };
 }
 
 function setupUserDropdown() {
@@ -441,13 +512,19 @@ function setupUserDropdown() {
     }
     // Handle logout
     if (logoutBtn) {
-        logoutBtn.addEventListener('click', () => {
+        logoutBtn.onclick = (e) => {
+            e.preventDefault();
             Auth.logout();
             userDropdown.classList.add('hidden');
             updateUserUI();
-            window.location.href = '/';
-            setTimeout(() => window.location.reload(), 100);
             Components.showNotification('Logged out successfully', 'success');
+            setTimeout(() => {
+                window.location.hash = '/';
+                window.location.reload();
+            }, 500);
+        };
+    }
+}
         });
     }
 }
@@ -845,3 +922,55 @@ window.Auth = Auth;
 window.Pages = Pages;
 window.Data = Data;
 window.Components = Components;
+
+// Initialize Sliders
+window.initPriceSliders = () => {
+    const minRange = document.getElementById('price-min');
+    const maxRange = document.getElementById('price-max');
+    const minInput = document.getElementById('price-min-val');
+    const maxInput = document.getElementById('price-max-val');
+    const track = document.getElementById('slider-track');
+
+    if (!minRange || !maxRange || !track) return;
+
+    const updateTrack = () => {
+        const min = parseInt(minRange.value);
+        const max = parseInt(maxRange.value);
+        const minPercent = (min / 1000000) * 100;
+        const maxPercent = 100 - (max / 1000000) * 100;
+        track.style.left = minPercent + "%";
+        track.style.right = maxPercent + "%";
+        if (minInput) minInput.value = min;
+        if (maxInput) maxInput.value = max;
+    };
+
+    minRange.oninput = () => {
+        if (parseInt(minRange.value) > parseInt(maxRange.value)) {
+            minRange.value = maxRange.value;
+        }
+        updateTrack();
+    };
+
+    maxRange.oninput = () => {
+        if (parseInt(maxRange.value) < parseInt(minRange.value)) {
+            maxRange.value = minRange.value;
+        }
+        updateTrack();
+    };
+
+    if (minInput) {
+        minInput.onchange = () => {
+            minRange.value = minInput.value;
+            updateTrack();
+        };
+    }
+
+    if (maxInput) {
+        maxInput.onchange = () => {
+            maxRange.value = maxInput.value;
+            updateTrack();
+        };
+    }
+
+    updateTrack();
+};

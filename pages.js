@@ -910,7 +910,7 @@ export const Pages = {
                         </div>
                         <h3 class="text-xl font-bold text-slate-800 mb-2">Check Order Status</h3>
                         <p class="text-slate-500 mb-6">Your payment is being processed. Please check your orders for the latest status.</p>
-                        <button onclick="Router.navigate('/account/orders')" class="bg-blue-600 text-white px-6 py-3 rounded-xl font-bold">View Orders</button>
+                        <button onclick="window.location.hash = '/account/orders'; window.location.reload();" class="bg-blue-600 text-white px-6 py-3 rounded-xl font-bold">View Orders</button>
                     </div>
                 `;
                 lucide.createIcons();
@@ -1230,15 +1230,27 @@ export const Pages = {
 
             // Filter by category
             if (category) {
-                products = products.filter(p => p.slug === category || (p.categoryId && p.categoryId.toString() === category));
+                products = products.filter(p => p.slug === category || p.category.toLowerCase().replace(/ /g, '-') === category);
             }
 
-            // Filter by search
+            // Filter by Price
+            if (params.minPrice) products = products.filter(p => (State.get().userRole === 'business' ? p.bulkPrice : p.price) >= params.minPrice);
+            if (params.maxPrice) products = products.filter(p => (State.get().userRole === 'business' ? p.bulkPrice : p.price) <= params.maxPrice);
+
+            // Filter by Rating
+            if (params.rating) products = products.filter(p => p.rating >= parseFloat(params.rating));
+
+            // Advanced Weighted Search
             if (search) {
-                products = products.filter(p =>
-                    p.name.toLowerCase().includes(search.toLowerCase()) ||
-                    p.description.toLowerCase().includes(search.toLowerCase())
-                );
+                products = products.map(p => {
+                    let weight = 0;
+                    const q = search.toLowerCase();
+                    if (p.name.toLowerCase() === q) weight += 100;
+                    else if (p.name.toLowerCase().startsWith(q)) weight += 50;
+                    else if (p.name.toLowerCase().includes(q)) weight += 20;
+                    if (p.category.toLowerCase().includes(q)) weight += 10;
+                    return { ...p, searchWeight: weight };
+                }).filter(p => p.searchWeight > 0).sort((a, b) => b.searchWeight - a.searchWeight);
             }
 
             window.currentProducts = products;
@@ -1256,41 +1268,47 @@ export const Pages = {
 
                     <div class="flex flex-col lg:flex-row gap-8">
                         <!-- Filters Sidebar -->
-                        <aside class="w-full lg:w-64 space-y-6">
-                            <div class="glass-card p-6 rounded-2xl">
-                                <h3 class="font-bold mb-4 text-slate-800">Categories</h3>
-                                <div class="space-y-2 text-sm">
-                                    ${categories.length > 0 ? categories.map(cat => `
-                                        <label class="flex items-center gap-2 cursor-pointer hover:text-blue-600 transition-colors" onclick="Router.navigate('/category/${cat.slug}')">
-                                            <input type="checkbox" class="rounded" ${category === cat.slug ? 'checked' : ''}>
-                                            <span>${cat.name}</span>
-                                            <span class="ml-auto text-slate-400">${cat.count}</span>
-                                        </label>
-                                    `).join('') : '<p class="text-slate-400 italic">No categories found</p>'}
+                        <aside class="w-full lg:w-72 space-y-6">
+                            <div class="glass-card p-6 rounded-3xl sticky top-24">
+                                <div class="flex items-center justify-between mb-6">
+                                    <h3 class="font-bold text-slate-800 flex items-center gap-2">
+                                        <i data-lucide="filter" class="w-4 h-4 text-blue-600"></i>
+                                        Filters
+                                    </h3>
+                                    <button onclick="Router.navigate('/products')" class="text-xs font-bold text-blue-600 hover:text-blue-700">Clear All</button>
                                 </div>
-                            </div>
 
-                            <div class="glass-card p-6 rounded-2xl">
-                                <h3 class="font-bold mb-4 text-slate-800">Price Range</h3>
-                                <input type="range" min="0" max="500" class="w-full mb-2">
-                                <div class="flex justify-between text-xs text-slate-400">
-                                    <span>$0</span>
-                                    <span>$500+</span>
-                                </div>
-                            </div>
-
-                            <div class="glass-card p-6 rounded-2xl">
-                                <h3 class="font-bold mb-4 text-slate-800">Rating</h3>
-                                <div class="space-y-2 text-sm">
-                                    ${[5, 4, 3, 2, 1].map(rating => `
-                                        <label class="flex items-center gap-2 cursor-pointer">
-                                            <input type="checkbox" class="rounded">
-                                            <div class="flex text-orange-400">
-                                                ${Components.StarRating(rating)}
+                                <!-- Categories -->
+                                <div class="mb-8">
+                                    <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-4">Categories</label>
+                                    <div class="space-y-1">
+                                        ${categories.map(cat => `
+                                            <div onclick="Router.navigate('/category/${cat.slug}')" class="flex items-center justify-between p-2 rounded-xl border-2 ${category === cat.slug ? 'border-blue-500 bg-blue-50/50 text-blue-600' : 'border-transparent hover:bg-slate-50 text-slate-600'} cursor-pointer transition-all group">
+                                                <span class="text-sm font-bold capitalize">${cat.name}</span>
+                                                <span class="text-[10px] font-bold ${category === cat.slug ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-400'} px-2 py-0.5 rounded-full group-hover:bg-blue-100 group-hover:text-blue-600">${cat.count}</span>
                                             </div>
-                                            <span class="text-slate-600">& Up</span>
-                                        </label>
-                                    `).join('')}
+                                        `).join('')}
+                                    </div>
+                                </div>
+
+                                <!-- Price Range -->
+                                <div class="mb-8 p-4 bg-slate-50/50 rounded-2xl border border-slate-100">
+                                    <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Price Range</label>
+                                    ${Components.DualHandleSlider('price-min', 'price-max', params.minPrice || 0, params.maxPrice || 1000000)}
+                                    <button onclick="Pages.consumer.applyPriceFilter()" class="w-full mt-4 bg-blue-600 text-white py-2 rounded-xl text-xs font-bold hover:bg-blue-700 transition-all shadow-lg shadow-blue-100">Apply Price</button>
+                                </div>
+
+                                <!-- Rating -->
+                                <div class="mb-2">
+                                    <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-4">Minimum Rating</label>
+                                    <div class="grid grid-cols-5 gap-2">
+                                        ${[1, 2, 3, 4, 5].map(r => `
+                                            <button onclick="Router.navigate('/products?rating=${r}${category ? '&category='+category : ''}')" class="p-2 rounded-xl border-2 ${params.rating == r ? 'border-blue-500 bg-blue-50 text-blue-600' : 'border-slate-100 hover:border-slate-300'} transition-all flex flex-col items-center gap-1">
+                                                <span class="text-xs font-bold">${r}</span>
+                                                <i data-lucide="star" class="w-3 h-3 ${params.rating == r ? 'fill-blue-500' : 'fill-slate-200 text-slate-300'}"></i>
+                                            </button>
+                                        `).join('')}
+                                    </div>
                                 </div>
                             </div>
                         </aside>
@@ -1322,6 +1340,16 @@ export const Pages = {
                     </div>
                 </div>
             `;
+        },
+
+        applyPriceFilter() {
+            const min = document.getElementById('price-min').value;
+            const max = document.getElementById('price-max').value;
+            const hash = window.location.hash.split('?')[0];
+            const searchParams = new URLSearchParams(window.location.hash.includes('?') ? window.location.hash.split('?')[1] : '');
+            searchParams.set('minPrice', min);
+            searchParams.set('maxPrice', max);
+            Router.navigate(`${hash.replace('#', '')}?${searchParams.toString()}`);
         },
 
         productDetail(productId) {
@@ -2446,7 +2474,7 @@ export const Pages = {
 
                         try {
                             const method = id ? 'PUT' : 'POST';
-                            const url = id ? `/api/addresses/${id}` : '/api/addresses';
+                            const url = id ? window.apiUrl(`/api/addresses/${id}`) : window.apiUrl('/api/addresses');
 
                             const res = await fetch(url, {
                                 method: method,
@@ -6250,16 +6278,16 @@ export const Pages = {
                     </div>
 
                     <div class="glass-card rounded-2xl overflow-hidden">
-                        <div class="border-b border-slate-100 bg-slate-50/50 p-2 flex gap-2 overflow-x-auto">
-                            <button onclick="State.fetchAdminUsers({ role: 'all' }).then(() => Router.refresh())" class="px-4 py-2 hover:bg-slate-100 rounded-lg text-sm font-medium text-slate-600">All Users</button>
-                            <button onclick="State.fetchAdminUsers({ role: 'consumer' }).then(() => Router.refresh())" class="px-4 py-2 hover:bg-slate-100 rounded-lg text-sm font-medium text-slate-600">Consumers</button>
-                            <button onclick="State.fetchAdminUsers({ role: 'business' }).then(() => Router.refresh())" class="px-4 py-2 hover:bg-slate-100 rounded-lg text-sm font-medium text-slate-600">Business</button>
-                            <button onclick="State.fetchAdminUsers({ role: 'dropshipper' }).then(() => Router.refresh())" class="px-4 py-2 hover:bg-slate-100 rounded-lg text-sm font-medium text-slate-600">Dropshippers</button>
-                            <button onclick="State.fetchAdminUsers({ role: 'supplier' }).then(() => Router.refresh())" class="px-4 py-2 hover:bg-slate-100 rounded-lg text-sm font-medium text-slate-600">Suppliers</button>
-                            <button onclick="State.fetchAdminUsers({ role: 'admin' }).then(() => Router.refresh())" class="px-4 py-2 hover:bg-slate-100 rounded-lg text-sm font-medium text-slate-600">Admins</button>
-                            <div class="w-px h-6 bg-slate-200 mx-2"></div>
-                            <button onclick="State.fetchAdminUsers({ status: 'active' }).then(() => Router.refresh())" class="px-4 py-2 hover:bg-slate-100 rounded-lg text-sm font-medium text-green-600">Active</button>
-                            <button onclick="State.fetchAdminUsers({ status: 'unverified' }).then(() => Router.refresh())" class="px-4 py-2 hover:bg-slate-100 rounded-lg text-sm font-medium text-orange-600">Unverified</button>
+                        <div class="border-b border-slate-100 bg-slate-50/50 p-2 flex gap-1 overflow-x-auto scrollbar-hide">
+                            <button onclick="State.fetchAdminUsers({ role: 'all' }).then(() => Router.refresh())" class="px-4 py-2 ${(!State.get().lastAdminFilters?.role || State.get().lastAdminFilters?.role === 'all') ? 'bg-blue-600 text-white' : 'hover:bg-slate-100 text-slate-600'} rounded-xl text-xs font-black uppercase tracking-widest transition-all">All Users</button>
+                            <button onclick="State.fetchAdminUsers({ role: 'consumer' }).then(() => Router.refresh())" class="px-4 py-2 ${(State.get().lastAdminFilters?.role === 'consumer') ? 'bg-blue-600 text-white' : 'hover:bg-slate-100 text-slate-600'} rounded-xl text-xs font-black uppercase tracking-widest transition-all">Consumers</button>
+                            <button onclick="State.fetchAdminUsers({ role: 'business' }).then(() => Router.refresh())" class="px-4 py-2 ${(State.get().lastAdminFilters?.role === 'business') ? 'bg-blue-600 text-white' : 'hover:bg-slate-100 text-slate-600'} rounded-xl text-xs font-black uppercase tracking-widest transition-all">Business</button>
+                            <button onclick="State.fetchAdminUsers({ role: 'dropshipper' }).then(() => Router.refresh())" class="px-4 py-2 ${(State.get().lastAdminFilters?.role === 'dropshipper') ? 'bg-blue-600 text-white' : 'hover:bg-slate-100 text-slate-600'} rounded-xl text-xs font-black uppercase tracking-widest transition-all">Dropshippers</button>
+                            <button onclick="State.fetchAdminUsers({ role: 'supplier' }).then(() => Router.refresh())" class="px-4 py-2 ${(State.get().lastAdminFilters?.role === 'supplier') ? 'bg-blue-600 text-white' : 'hover:bg-slate-100 text-slate-600'} rounded-xl text-xs font-black uppercase tracking-widest transition-all">Suppliers</button>
+                            <button onclick="State.fetchAdminUsers({ role: 'admin' }).then(() => Router.refresh())" class="px-4 py-2 ${(State.get().lastAdminFilters?.role === 'admin') ? 'bg-blue-600 text-white' : 'hover:bg-slate-100 text-slate-600'} rounded-xl text-xs font-black uppercase tracking-widest transition-all">Admins</button>
+                            <div class="w-px h-6 bg-slate-200 mx-2 self-center"></div>
+                            <button onclick="State.fetchAdminUsers({ status: 'active' }).then(() => Router.refresh())" class="px-4 py-2 ${(State.get().lastAdminFilters?.status === 'active') ? 'bg-green-600 text-white' : 'hover:bg-slate-100 text-green-600'} rounded-xl text-xs font-black uppercase tracking-widest transition-all">Active</button>
+                            <button onclick="State.fetchAdminUsers({ status: 'unverified' }).then(() => Router.refresh())" class="px-4 py-2 ${(State.get().lastAdminFilters?.status === 'unverified') ? 'bg-orange-600 text-white' : 'hover:bg-slate-100 text-orange-600'} rounded-xl text-xs font-black uppercase tracking-widest transition-all">Unverified</button>
                         </div>
                         
                         <table class="w-full">

@@ -993,9 +993,12 @@ export const State = {
     },
 
     async fetchAdminUsers(filters = {}) {
+        this.set({ lastAdminFilters: filters });
         try {
-            const params = new URLSearchParams(filters);
-            const res = await fetch(`${API}/admin/users?${params}`, { headers: authHeaders() });
+            const query = new URLSearchParams(filters).toString();
+            const res = await fetch(`${API}/admin/users?${query}`, {
+                headers: authHeaders()
+            });
             if (res.ok) {
                 const users = await res.json();
                 this._state.adminUsers = users;
