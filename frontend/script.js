@@ -525,9 +525,6 @@ function setupUserDropdown() {
         };
     }
 }
-        });
-    }
-}
 
 function updateUserUI() {
     const session = Auth.getUserSession();
