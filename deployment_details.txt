@@ -11,7 +11,7 @@
 - **Deployment Branch**: master (master branch on both repositories is synced with the latest stable code)
 - **Auto-Deployment Configs**: 
   - `render.yaml`: Manages Backend services and Postgres.
-  - `netlify.toml`: Manages Frontend static deployment from the `frontend/` directory.
+  - `vercel.json`: Manages Frontend static deployment from the `frontend/` directory on Vercel.
 
 ## Configuration Overview
 ### Backend (Render)
@@ -31,7 +31,7 @@
 
 ## Continuous Integration
 - Both repositories are set to auto-deploy from the `master` branch.
-- Any push to `master` will trigger a build on Render.
+- Any push to `master` will trigger a build on Render for the backend and Vercel for the frontend.
 
 ## Project Structure
 - `frontend/`: Single Page Application (HTML/JS/Vanilla CSS).
