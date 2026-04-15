@@ -1,0 +1,39 @@
+# Xperiencestore Deployment Details
+
+## Repositories
+- **Backend**: https://github.com/WID-LTD/Xperiencestore
+- **Frontend**: https://github.com/WID-LTD/xperiencestoreui-ux
+
+## Hosting & URLs
+- **Frontend URL**: https://xperiencestore.store/
+- **Backend API URL**: https://xperiencestore.onrender.com
+- **Database**: Postgres (Hosted on Render via `render.yaml`)
+- **Deployment Branch**: master (master branch on both repositories is synced with the latest stable code)
+- **Auto-Deployment Configs**: 
+  - `render.yaml`: Manages Backend services and Postgres.
+  - `netlify.toml`: Manages Frontend static deployment from the `frontend/` directory.
+
+## Configuration Overview
+### Backend (Render)
+- Environment Variables Required:
+  - `DATABASE_URL`: Connection string for Postgres.
+  - `PORT`: 10000 (default for Render).
+  - `FRONTEND_URL`: https://xperiencestore.store (Crucial for payment redirects).
+  - `JWT_SECRET`: Secure string for auth tokens.
+  - `CLOUDFLARE_R2_ACCESS_KEY_ID`: For media storage.
+  - `CLOUDFLARE_R2_SECRET_ACCESS_KEY`: For media storage.
+  - `CLOUDFLARE_R2_BUCKET_NAME`: xperiencestore
+  - `CLOUDFLARE_R2_ACCOUNT_ID`: r2-account-id
+
+### Frontend (Static/CDN)
+- Configured to point to the Render backend at `https://xperiencestore.onrender.com`.
+- Routing handled by `router.js` for client-side navigation.
+
+## Continuous Integration
+- Both repositories are set to auto-deploy from the `master` branch.
+- Any push to `master` will trigger a build on Render.
+
+## Project Structure
+- `frontend/`: Single Page Application (HTML/JS/Vanilla CSS).
+- `server/`: Express.js backend with controllers and routes.
+- `schema.sql`: Database initialization script.
