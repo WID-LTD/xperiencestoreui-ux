@@ -8,6 +8,7 @@ import { State } from './state.js';
 import { Router } from './router.js';
 import { Components } from './components.js';
 import { Tracking } from './tracking.js';
+import { Auth } from './auth.js';
 
 
 export const Pages = {
@@ -2105,6 +2106,104 @@ export const Pages = {
         },
 
         account() {
+            // Auth guard: show sign-in/sign-up landing page for unauthenticated users
+            if (!Auth.isLoggedIn()) {
+                return `
+                    <div class="min-h-[85vh] flex items-center justify-center px-4 py-12" style="background: linear-gradient(135deg, #f0f4ff 0%, #e8f0fe 50%, #fdf2ff 100%)">
+                        <div class="max-w-5xl w-full">
+
+                            <!-- Hero Section -->
+                            <div class="text-center mb-16">
+                                <div class="inline-flex items-center gap-2 bg-blue-50 border border-blue-100 text-blue-600 text-xs font-bold px-4 py-2 rounded-full mb-6 uppercase tracking-widest">
+                                    <i data-lucide="shield-check" class="w-3.5 h-3.5"></i>
+                                    Secure Account Portal
+                                </div>
+                                <h1 class="text-5xl md:text-6xl font-black text-slate-900 mb-5 leading-tight">
+                                    Your <span style="background: linear-gradient(135deg, #2563eb, #7c3aed); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">Xperience</span><br>Awaits
+                                </h1>
+                                <p class="text-xl text-slate-500 max-w-lg mx-auto leading-relaxed">
+                                    Sign in to manage your orders, wishlist, and account settings — or create a free account to get started.
+                                </p>
+                            </div>
+
+                            <!-- Cards -->
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-3xl mx-auto mb-14">
+
+                                <!-- Sign In Card -->
+                                <div class="group relative bg-white rounded-3xl p-8 shadow-xl border border-slate-100 hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 cursor-pointer" onclick="Router.navigate('/login')" id="account-signin-card">
+                                    <div class="absolute inset-0 rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-300" style="background: linear-gradient(135deg, rgba(37,99,235,0.04), rgba(124,58,237,0.04));"></div>
+                                    <div class="relative">
+                                        <div class="w-14 h-14 rounded-2xl flex items-center justify-center mb-6 shadow-lg" style="background: linear-gradient(135deg, #2563eb, #3b82f6);">
+                                            <i data-lucide="log-in" class="w-7 h-7 text-white"></i>
+                                        </div>
+                                        <h2 class="text-2xl font-bold text-slate-900 mb-3">Sign In</h2>
+                                        <p class="text-slate-500 text-sm leading-relaxed mb-6">
+                                            Already have an account? Access your dashboard, view orders, and manage your profile.
+                                        </p>
+                                        <div class="flex flex-wrap gap-2 mb-8">
+                                            <span class="bg-blue-50 text-blue-600 text-xs font-bold px-3 py-1 rounded-full">Track Orders</span>
+                                            <span class="bg-blue-50 text-blue-600 text-xs font-bold px-3 py-1 rounded-full">Wishlist</span>
+                                            <span class="bg-blue-50 text-blue-600 text-xs font-bold px-3 py-1 rounded-full">Settings</span>
+                                        </div>
+                                        <button onclick="event.stopPropagation(); Router.navigate('/login')" id="account-goto-signin" class="w-full py-3.5 rounded-2xl font-bold text-white transition-all hover:opacity-90 active:scale-[0.98] flex items-center justify-center gap-2" style="background: linear-gradient(135deg, #2563eb, #3b82f6); box-shadow: 0 8px 24px rgba(37,99,235,0.3);">
+                                            <i data-lucide="log-in" class="w-4 h-4"></i>
+                                            Sign In to Your Account
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <!-- Create Account Card -->
+                                <div class="group relative bg-white rounded-3xl p-8 shadow-xl border border-slate-100 hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 cursor-pointer" onclick="Router.navigate('/register')" id="account-register-card">
+                                    <div class="absolute inset-0 rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-300" style="background: linear-gradient(135deg, rgba(124,58,237,0.04), rgba(16,185,129,0.04));"></div>
+                                    <div class="relative">
+                                        <div class="w-14 h-14 rounded-2xl flex items-center justify-center mb-6 shadow-lg" style="background: linear-gradient(135deg, #7c3aed, #a855f7);">
+                                            <i data-lucide="user-plus" class="w-7 h-7 text-white"></i>
+                                        </div>
+                                        <h2 class="text-2xl font-bold text-slate-900 mb-3">Create Account</h2>
+                                        <p class="text-slate-500 text-sm leading-relaxed mb-6">
+                                            New to Xperiencestore? Join thousands of shoppers and unlock exclusive benefits.
+                                        </p>
+                                        <div class="flex flex-wrap gap-2 mb-8">
+                                            <span class="bg-purple-50 text-purple-600 text-xs font-bold px-3 py-1 rounded-full">Free to Join</span>
+                                            <span class="bg-purple-50 text-purple-600 text-xs font-bold px-3 py-1 rounded-full">Exclusive Deals</span>
+                                            <span class="bg-purple-50 text-purple-600 text-xs font-bold px-3 py-1 rounded-full">Fast Checkout</span>
+                                        </div>
+                                        <button onclick="event.stopPropagation(); Router.navigate('/register')" id="account-goto-register" class="w-full py-3.5 rounded-2xl font-bold text-white transition-all hover:opacity-90 active:scale-[0.98] flex items-center justify-center gap-2" style="background: linear-gradient(135deg, #7c3aed, #a855f7); box-shadow: 0 8px 24px rgba(124,58,237,0.3);">
+                                            <i data-lucide="user-plus" class="w-4 h-4"></i>
+                                            Create Free Account
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Trust Badges -->
+                            <div class="flex flex-wrap items-center justify-center gap-6 text-slate-400 text-xs font-bold">
+                                <div class="flex items-center gap-2">
+                                    <i data-lucide="lock" class="w-4 h-4 text-green-500"></i>
+                                    <span>256-bit SSL Secure</span>
+                                </div>
+                                <div class="w-1 h-1 bg-slate-300 rounded-full hidden sm:block"></div>
+                                <div class="flex items-center gap-2">
+                                    <i data-lucide="shield" class="w-4 h-4 text-blue-500"></i>
+                                    <span>Privacy Protected</span>
+                                </div>
+                                <div class="w-1 h-1 bg-slate-300 rounded-full hidden sm:block"></div>
+                                <div class="flex items-center gap-2">
+                                    <i data-lucide="users" class="w-4 h-4 text-purple-500"></i>
+                                    <span>50,000+ Happy Customers</span>
+                                </div>
+                                <div class="w-1 h-1 bg-slate-300 rounded-full hidden sm:block"></div>
+                                <div class="flex items-center gap-2">
+                                    <i data-lucide="headphones" class="w-4 h-4 text-orange-500"></i>
+                                    <span>24/7 Support</span>
+                                </div>
+                            </div>
+
+                        </div>
+                    </div>
+                `;
+            }
+
             const user = State.getUser() || { name: 'Welcome', email: '' };
 
             // Fetch real status in background
@@ -2147,7 +2246,7 @@ export const Pages = {
                                 <i data-lucide="settings" class="w-5 h-5 inline mr-2"></i>
                                 Settings
                             </button>
-                            <button onclick="Auth.logout(); Router.navigate('/')" class="w-full p-4 glass-card rounded-xl font-bold text-left text-red-600 hover:bg-red-50 transition-all">
+                            <button onclick="Auth.logout(); window.location.hash = '/'; window.location.reload();" class="w-full p-4 glass-card rounded-xl font-bold text-left text-red-600 hover:bg-red-50 transition-all" id="account-logout-btn">
                                 <i data-lucide="log-out" class="w-5 h-5 inline mr-2"></i>
                                 Logout
                             </button>
