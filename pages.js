@@ -3,12 +3,12 @@
  * Centralized page rendering for all user types
  */
 
-import { Data } from './data.js';
-import { State } from './state.js';
-import { Router } from './router.js';
-import { Components } from './components.js';
-import { Tracking } from './tracking.js';
-import { Auth } from './auth.js';
+import { Data } from './data.js?v=3.1.3';
+import { State } from './state.js?v=3.1.3';
+import { Router } from './router.js?v=3.1.3';
+import { Components } from './components.js?v=3.1.3';
+import { Tracking } from './tracking.js?v=3.1.3';
+import { Auth } from './auth.js?v=3.1.3';
 
 
 export const Pages = {
@@ -1974,31 +1974,12 @@ export const Pages = {
                 return;
             }
 
-            State.notify('Creating order...', 'info');
+            State.notify('Initiating payment gateway...', 'info');
 
             try {
-                // 1. Create Order in DB
-                const orderResponse = await fetch(window.apiUrl('/api/orders'), {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${session.token}`
-                    },
-                    body: JSON.stringify({
-                        shippingAddress: `${fname} ${lname}, ${address}, ${city}, ${country}. Ph: ${phone}`,
-                        notes: 'Web order'
-                    })
-                });
+                // We no longer create the Order here. 
+                // We directly initialize payment with the transaction metadata!
 
-                const orderData = await orderResponse.json();
-                if (!orderResponse.ok) {
-                    throw new Error(orderData.message || 'Failed to create order');
-                }
-
-                const orderId = orderData.orderId;
-                State.notify('Initiating payment...', 'info');
-
-                // 2. Initialize Payment Gateway Redirect
                 const paymentResponse = await fetch(window.apiUrl('/api/payment/initialize'), {
                     method: 'POST',
                     headers: {
@@ -2007,18 +1988,19 @@ export const Pages = {
                     },
                     body: JSON.stringify({
                         userId: session.id,
-                        orderId: orderId,
+                        orderId: null, // Order is purposefully delayed until callback
                         amount: total,
                         currency: 'NGN',
                         paymentGateway: method,
-                        userCurrency: 'NGN'
+                        userCurrency: 'NGN',
+                        shippingAddress: `${fname} ${lname}, ${address}, ${city}, ${country}. Ph: ${phone}`,
+                        notes: 'Web order'
                     })
                 });
 
                 const paymentData = await paymentResponse.json();
 
                 if (paymentData.success) {
-                    // Stripe / Paystack / Flutterwave/ PayPal redirect logic
                     const pData = paymentData.paymentData || paymentData;
                     const redirectUrl = pData.checkoutUrl ||
                         pData.authorizationUrl ||
@@ -2028,8 +2010,8 @@ export const Pages = {
                     if (redirectUrl) {
                         window.location.href = redirectUrl;
                     } else if (paymentData.method === 'gift_card') {
-                        State.clearCart();
-                        Router.navigate(`/order-confirmation/${orderId}`);
+                        // For perfectly synchronous zero-balance gateway transactions
+                        Router.navigate(`/payment-status?gateway=gift_card&status=success&reference=${paymentData.transactionRef}`);
                     } else {
                         throw new Error('No payment redirect URL received');
                     }
@@ -2896,14 +2878,65 @@ export const Pages = {
         const { q = '', page = 1 } = params;
         let products = State.getProducts();
 
-        // Filter by search query
+        // Filter by search query using advanced fuzzy token ranking
         if (q) {
             const query = q.toLowerCase();
-            products = products.filter(p =>
-                p.name.toLowerCase().includes(query) ||
-                p.description.toLowerCase().includes(query) ||
-                p.category.toLowerCase().includes(query)
-            );
+            
+            // 1. Ensure pre-computation index exists
+            if (products.length > 0 && !products[0]._searchTerms) {
+                for (let i = 0; i < products.length; i++) {
+                    const p = products[i];
+                    const name = (p.name || '').toLowerCase();
+                    const cat = (p.category || '').toLowerCase();
+                    const desc = (p.description || '').toLowerCase();
+                    products[i]._searchTerms = `${name} ${cat} ${desc}`;
+                    products[i]._nameLower = name;
+                    products[i]._catLower = cat;
+                }
+            }
+
+            const tokens = query.split(/\\s+/).filter(t => t.length > 0);
+            const matches = [];
+
+            for (let i = 0; i < products.length; i++) {
+                const p = products[i];
+                let matchedTokensCount = 0;
+                
+                for (let t = 0; t < tokens.length; t++) {
+                    if (p._searchTerms.includes(tokens[t])) {
+                        matchedTokensCount++;
+                    }
+                }
+                
+                const matchRatio = tokens.length > 0 ? (matchedTokensCount / tokens.length) : 0;
+                
+                if (matchRatio < 0.25) continue; // Reject if under 25% match rate
+
+                let weight = 0;
+                
+                // Massive ranking boost based on percentage hitting thresholds
+                if (matchRatio >= 0.50) weight += 1000; // Rank as 100%
+                else if (matchRatio >= 0.25) weight += 200; // Still passes, rank lower
+                 
+                weight += Math.pow(matchedTokensCount, 2) * 5; 
+
+                if (p._nameLower === query) weight += 500;
+                else if (p._nameLower.startsWith(query)) weight += 100;
+                else if (p._nameLower.includes(query)) weight += 30;
+
+                for(let t = 0; t < tokens.length; t++) {
+                    if (p._nameLower.includes(tokens[t])) weight += 15;
+                    if (p._catLower.includes(tokens[t])) weight += 5;
+                }
+
+                if (weight > 0) {
+                    p._searchWeight = weight;
+                    matches.push(p);
+                }
+            }
+            
+            // Sort by search relevance weight
+            products = matches.sort((a, b) => b._searchWeight - a._searchWeight);
         }
 
         window.currentProducts = products;

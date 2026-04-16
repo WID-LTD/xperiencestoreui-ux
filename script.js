@@ -3,14 +3,14 @@
  * Wires together router, state, pages, and components
  */
 
-import { Auth } from './auth.js';
-import { Router } from './router.js';
-import { State } from './state.js';
-import { Data } from './data.js';
-import { Components } from './components.js';
-import { Pages } from './pages.js';
-import { Payment } from './payment.js';
-import { PaymentCheckoutModal } from './paymentModal.js';
+import { Auth } from './auth.js?v=3.1.3';
+import { Router } from './router.js?v=3.1.3';
+import { State } from './state.js?v=3.1.3';
+import { Data } from './data.js?v=3.1.3';
+import { Components } from './components.js?v=3.1.3';
+import { Pages } from './pages.js?v=3.1.3';
+import { Payment } from './payment.js?v=3.1.3';
+import { PaymentCheckoutModal } from './paymentModal.js?v=3.1.3';
 
 
 // Initialize application
@@ -463,10 +463,20 @@ function setupNavigation() {
                             matchedTokensCount++;
                         }
                     }
-                    if (matchedTokensCount === 0) continue;
+                    // Fuzzy percentage matching logic based on USER SPECIFICATION:
+                    // If matchedTokensCount is at least 50% of the total tokens, rank it as 100% match.
+                    // If matchedTokensCount is at least 25%, rank it lower.
+                    const matchRatio = tokens.length > 0 ? (matchedTokensCount / tokens.length) : 0;
+                    
+                    if (matchRatio < 0.25) continue; // Reject if under 25% match rate
 
-                    // If it passes, compute an exponential weight based on token hit rate
-                    let weight = Math.pow(matchedTokensCount, 2) * 5; 
+                    let weight = 0;
+                    
+                    // Massive ranking boost based on percentage hitting thresholds
+                    if (matchRatio >= 0.50) weight += 1000; // Rank as 100%
+                    else if (matchRatio >= 0.25) weight += 200; // Still passes, rank lower
+                     
+                    weight += Math.pow(matchedTokensCount, 2) * 5; 
 
                     // Full query exact/starts-with matching (Highly rewarded)
                     if (p._nameLower === query) weight += 500;
