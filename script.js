@@ -456,25 +456,26 @@ function setupNavigation() {
                 // --- 3. High-Performance Loop ---
                 for (let i = 0; i < products.length; i++) {
                     const p = products[i];
-                    
-                    // Fast rejection: If any token is missing, skip completely!
-                    let passesTokens = true;
+                    // Fuzzy rejection: Check how many tokens match the index. Skip only if ZERO tokens match.
+                    let matchedTokensCount = 0;
                     for (let t = 0; t < tokens.length; t++) {
-                        if (!p._searchTerms.includes(tokens[t])) {
-                            passesTokens = false;
-                            break;
+                        if (p._searchTerms.includes(tokens[t])) {
+                            matchedTokensCount++;
                         }
                     }
-                    if (!passesTokens) continue;
+                    if (matchedTokensCount === 0) continue;
 
-                    // If it passes, compute weight based on relevance
-                    let weight = 0;
-                    if (p._nameLower === query) weight += 100;
-                    else if (p._nameLower.startsWith(query)) weight += 50;
-                    else if (p._nameLower.includes(query)) weight += 20;
+                    // If it passes, compute an exponential weight based on token hit rate
+                    let weight = Math.pow(matchedTokensCount, 2) * 5; 
 
-                    for(let t=0; t<tokens.length; t++) {
-                        if (p._nameLower.includes(tokens[t])) weight += 10;
+                    // Full query exact/starts-with matching (Highly rewarded)
+                    if (p._nameLower === query) weight += 500;
+                    else if (p._nameLower.startsWith(query)) weight += 100;
+                    else if (p._nameLower.includes(query)) weight += 30;
+
+                    // Individual token hit distributions
+                    for(let t = 0; t < tokens.length; t++) {
+                        if (p._nameLower.includes(tokens[t])) weight += 15;
                         if (p._catLower.includes(tokens[t])) weight += 5;
                     }
 
