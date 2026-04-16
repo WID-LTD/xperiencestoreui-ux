@@ -410,11 +410,17 @@ function setupNavigation() {
         `).join('');
     }
 
-    // Advanced Search & Suggestions
-    const searchInput = document.getElementById('global-search-input');
-    const suggestionsContainer = document.getElementById('search-suggestions');
+    // Advanced High-Performance Responsive Search & Suggestions
+    const searchWrappers = [
+        { input: document.getElementById('global-search-input'), sugg: document.getElementById('search-suggestions') },
+        { input: document.getElementById('mobile-search-input'), sugg: document.getElementById('mobile-search-suggestions') }
+    ];
 
-    if (searchInput) {
+    searchWrappers.forEach(wrapper => {
+        const searchInput = wrapper.input;
+        const suggestionsContainer = wrapper.sugg;
+        if (!searchInput || !suggestionsContainer) return;
+
         let debounceTimer;
 
         searchInput.addEventListener('input', (e) => {
@@ -429,38 +435,72 @@ function setupNavigation() {
             debounceTimer = setTimeout(() => {
                 const products = State.get().products || [];
                 
-                // Advanced Smart Searching Algorithm (Weighted results)
-                const results = products.map(p => {
-                    let weight = 0;
-                    const name = p.name.toLowerCase();
-                    const cat = (p.category || '').toLowerCase();
-                    const desc = (p.description || '').toLowerCase();
+                // --- 1. Pre-computation (Lazy Indexing) ---
+                if (products.length > 0 && !products[0]._searchTerms) {
+                    for (let i = 0; i < products.length; i++) {
+                        const p = products[i];
+                        const name = (p.name || '').toLowerCase();
+                        const cat = (p.category || '').toLowerCase();
+                        const desc = (p.description || '').toLowerCase();
+                        // One giant string index for ultra-fast token matching
+                        products[i]._searchTerms = `${name} ${cat} ${desc}`;
+                        products[i]._nameLower = name;
+                        products[i]._catLower = cat;
+                    }
+                }
 
-                    if (name === query) weight += 100;
-                    else if (name.startsWith(query)) weight += 50;
-                    else if (name.includes(query)) weight += 20;
+                // --- 2. Tokenization & Token-based fast exclusion ---
+                const tokens = query.split(/\\s+/).filter(t => t.length > 0);
+                const matches = [];
+
+                // --- 3. High-Performance Loop ---
+                for (let i = 0; i < products.length; i++) {
+                    const p = products[i];
                     
-                    if (cat.includes(query)) weight += 15;
-                    if (desc.includes(query)) weight += 5;
+                    // Fast rejection: If any token is missing, skip completely!
+                    let passesTokens = true;
+                    for (let t = 0; t < tokens.length; t++) {
+                        if (!p._searchTerms.includes(tokens[t])) {
+                            passesTokens = false;
+                            break;
+                        }
+                    }
+                    if (!passesTokens) continue;
 
-                    return { ...p, weight };
-                })
-                .filter(p => p.weight > 0)
-                .sort((a, b) => b.weight - a.weight)
-                .slice(0, 6)
-                .map(p => ({
-                    id: p.id,
-                    name: p.name,
-                    image: State.getMediaUrl(p.id, 0),
-                    type: 'product',
-                    category: p.category,
-                    weight: p.weight
-                }));
+                    // If it passes, compute weight based on relevance
+                    let weight = 0;
+                    if (p._nameLower === query) weight += 100;
+                    else if (p._nameLower.startsWith(query)) weight += 50;
+                    else if (p._nameLower.includes(query)) weight += 20;
+
+                    for(let t=0; t<tokens.length; t++) {
+                        if (p._nameLower.includes(tokens[t])) weight += 10;
+                        if (p._catLower.includes(tokens[t])) weight += 5;
+                    }
+
+                    if (weight > 0) {
+                        matches.push({
+                            id: p.id,
+                            name: p.name,
+                            image: State.getMediaUrl(p.id, 0),
+                            type: 'product',
+                            category: p.category, 
+                            weight: weight
+                        });
+                    }
+                }
+
+                // --- 4. Sort and Slice ---
+                const results = matches.sort((a, b) => b.weight - a.weight).slice(0, 6);
 
                 suggestionsContainer.innerHTML = Components.SearchSuggestions(results, query);
+                
+                // Force mobile container to appear floating above other elements
+                suggestionsContainer.className = 'absolute top-full left-0 right-0 mt-2 z-[2000] glass-card bg-white/80 backdrop-blur-2xl border border-white/40 shadow-2xl rounded-2xl overflow-hidden animate-in fade-in slide-in-from-top-2 duration-300';
                 suggestionsContainer.classList.remove('hidden');
-                lucide.createIcons();
-            }, 300);
+                
+                if (window.lucide) window.lucide.createIcons();
+            }, 100); // Super fast 100ms debounce due to optimized O(1) skipping
         });
 
         searchInput.addEventListener('keypress', (e) => {
@@ -472,18 +512,24 @@ function setupNavigation() {
                 }
             }
         });
+    });
 
-        // Hide suggestions when clicking outside
-        document.addEventListener('click', (e) => {
-            if (!searchInput.contains(e.target) && !suggestionsContainer.contains(e.target)) {
-                suggestionsContainer.classList.add('hidden');
+    // Hide suggestions when clicking outside
+    document.addEventListener('click', (e) => {
+        searchWrappers.forEach(wrapper => {
+            if (wrapper.input && wrapper.sugg) {
+                if (!wrapper.input.contains(e.target) && !wrapper.sugg.contains(e.target)) {
+                    wrapper.sugg.classList.add('hidden');
+                }
             }
         });
-    }
+    });
 
     // Global helper for suggestions
     window.handleSuggestionClick = (type, id) => {
-        suggestionsContainer.classList.add('hidden');
+        searchWrappers.forEach(wrapper => {
+            if (wrapper.sugg) wrapper.sugg.classList.add('hidden');
+        });
         if (type === 'product') {
             Router.navigate(`/product/${id}`);
         } else if (type === 'category') {
