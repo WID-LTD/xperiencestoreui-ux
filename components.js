@@ -3,8 +3,8 @@
  * Library of reusable components for consistent UI
  */
 
-import { State } from './state.js';
-import { Router } from './router.js';
+import { State } from './state.js?v=3.1.4';
+import { Router } from './router.js?v=3.1.4';
 
 export const Components = {
     // Search Suggestions Component (Glassmorphism)
@@ -119,8 +119,11 @@ export const Components = {
                         </div>
                         ${showAddToCart ? `
                             <div class="flex gap-2">
-                                <button onclick="event.stopPropagation(); Components.addToCartAction(${product.id})" class="bg-blue-600 text-white p-3 rounded-lg hover:bg-blue-700 transition-all">
+                                <button onclick="event.stopPropagation(); Components.addToCartAction(${product.id})" class="bg-blue-600/10 text-blue-600 p-3 rounded-lg hover:bg-blue-600 hover:text-white transition-all" title="Add to Cart">
                                     <i data-lucide="shopping-cart" class="w-4 h-4"></i>
+                                </button>
+                                <button onclick="event.stopPropagation(); Components.buyNowAction(${product.id})" class="bg-slate-900 text-white px-4 py-2 rounded-lg text-xs font-bold hover:bg-slate-800 transition-all">
+                                    Buy Now
                                 </button>
                                 ${state.userRole === 'dropshipper' ? `
                                     <button onclick="event.stopPropagation(); State.addToStore(${product.id})" class="bg-purple-600 text-white p-3 rounded-lg hover:bg-purple-700 transition-all" title="Add to Store">
@@ -576,26 +579,45 @@ export const Components = {
         }
     },
 
-    addToCartAction(productId) {
+    async addToCartAction(productId) {
         const qtyInput = document.getElementById('product-qty-input');
         const qty = qtyInput ? parseInt(qtyInput.value) || 1 : 1;
-        const product = window.currentProducts?.find(p => p.id === productId);
+        const product = (window.currentProducts || []).find(p => p.id === productId);
         if (product) {
-            State.addToCart(product, qty);
-            // Update cart badge
+            await State.addToCart(product, qty);
             this.updateCartBadge();
-            this.showNotification(`Added ${qty} ${product.name} to cart`, 'success');
+            // showNotification is already handled inside State.addToCart logic or below
         }
     },
 
-    buyNowAction(productId) {
+    async buyNowAction(productId) {
         const qtyInput = document.getElementById('product-qty-input');
         const qty = qtyInput ? parseInt(qtyInput.value) || 1 : 1;
-        const product = window.currentProducts?.find(p => p.id === productId);
+        
+        // Robust product lookup: current page context -> all state products
+        let product = (window.currentProducts || []).find(p => p.id === productId);
+        if (!product) {
+            product = (State.get().products || []).find(p => p.id === productId);
+        }
+        
         if (product) {
-            State.addToCart(product, qty);
-            this.updateCartBadge();
+            await State.addToCart(product, qty);
+            // After adding to cart, update badge and redirect
+            if (State.get().cartPageOpen) {
+                 // If already on cart page, just update the UI (rare case for buy now)
+                 window.updateCartUI?.();
+            }
             Router.navigate('/checkout');
+        } else {
+            // Fallback: if product isn't loaded yet, we could fetch it, but usually it's in state
+            console.warn(`[BuyNow] Product ${productId} not found in state.`);
+            // Optionally fetch and then add
+            const res = await fetch(`${window.API_BASE}/api/products/${productId}`);
+            if (res.ok) {
+                const p = await res.json();
+                await State.addToCart(p, qty);
+                Router.navigate('/checkout');
+            }
         }
     },
 
@@ -609,7 +631,8 @@ export const Components = {
     // --- Mobile Components ---
 
     BottomNav() {
-        const role = State.get().userRole;
+        const rawRole = State.get().userRole || 'consumer';
+        const role = rawRole.toLowerCase().replace(/\s+/g, ''); // normalize 'drop shipper' -> 'dropshipper'
         const currentPath = Router.getCurrentRoute()?.path || '/';
 
         const navItems = {
@@ -628,6 +651,13 @@ export const Components = {
                 { icon: 'user', label: 'Account', path: '/account' }
             ],
             business: [
+                { icon: 'home', label: 'Home', path: '/' },
+                { icon: 'briefcase', label: 'Suppliers', path: '/business/suppliers' },
+                { icon: 'file-text', label: 'RFQ', path: '/business/rfq' },
+                { icon: 'shopping-bag', label: 'Quotes', path: '/business/quotes' },
+                { icon: 'user', label: 'Account', path: '/account' }
+            ],
+            bussiness: [ // Handling typo
                 { icon: 'home', label: 'Home', path: '/' },
                 { icon: 'briefcase', label: 'Suppliers', path: '/business/suppliers' },
                 { icon: 'file-text', label: 'RFQ', path: '/business/rfq' },
@@ -697,6 +727,19 @@ export const Components = {
                     `).join('')}
                 </div>
 
+                ${State.get().currentUser ? `
+                    <div class="mt-auto pt-6 border-t border-slate-100">
+                        <button onclick="Auth.logout(); setTimeout(() => { window.location.hash = '#/'; window.location.reload(); }, 500);" class="w-full flex items-center gap-4 p-4 rounded-xl text-red-600 font-bold hover:bg-red-50 transition-all">
+                            <i data-lucide="log-out" class="w-5 h-5"></i>
+                            <span>Logout</span>
+                        </button>
+                    </div>
+                ` : `
+                    <div class="mt-auto pt-6 border-t border-slate-100 grid grid-cols-2 gap-3">
+                        <a href="#/login" onclick="Components.toggleMobileMenu()" class="flex items-center justify-center p-4 rounded-xl bg-blue-600 text-white font-bold text-sm">Login</a>
+                        <a href="#/register" onclick="Components.toggleMobileMenu()" class="flex items-center justify-center p-4 rounded-xl bg-slate-100 text-slate-800 font-bold text-sm">Join</a>
+                    </div>
+                `}
             </div>
         `;
     },
@@ -857,6 +900,50 @@ export const Components = {
             localStorage.setItem(countKey, (count + 1).toString());
             if (window.lucide) lucide.createIcons();
         }
+    },
+
+    ConfirmModal(title, message, onConfirm, confirmText = 'Confirm', type = 'danger') {
+        const id = `confirm-modal-${Date.now()}`;
+        const accentColor = type === 'danger' ? 'red' : 'blue';
+        const icon = type === 'danger' ? 'alert-triangle' : 'help-circle';
+
+        const modalHtml = `
+            <div id="${id}" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[10000] flex items-center justify-center p-4 animate-in fade-in">
+                <div class="bg-white rounded-[2rem] p-8 max-w-sm w-full shadow-2xl transform transition-all animate-up">
+                    <div class="w-16 h-16 bg-${accentColor}-100 rounded-2xl flex items-center justify-center text-${accentColor}-600 mb-6 mx-auto">
+                        <i data-lucide="${icon}" class="w-8 h-8"></i>
+                    </div>
+                    
+                    <h2 class="text-xl font-bold text-center text-slate-800 mb-2">${title}</h2>
+                    <p class="text-sm text-center text-slate-500 mb-8 leading-relaxed">${message}</p>
+                    
+                    <div class="flex flex-col gap-3">
+                        <button id="${id}-confirm" class="w-full bg-${accentColor}-600 text-white py-4 rounded-xl font-bold hover:bg-${accentColor}-700 transition-all shadow-lg shadow-${accentColor}-200">${confirmText}</button>
+                        <button id="${id}-cancel" class="w-full py-3 text-slate-400 text-sm font-bold hover:text-slate-600 transition-all">Cancel</button>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+        if (window.lucide) lucide.createIcons();
+
+        const modalEl = document.getElementById(id);
+        const confirmBtn = document.getElementById(`${id}-confirm`);
+        const cancelBtn = document.getElementById(`${id}-cancel`);
+
+        const close = () => {
+            modalEl.classList.add('opacity-0', 'scale-95');
+            setTimeout(() => modalEl.remove(), 200);
+        };
+
+        confirmBtn.onclick = () => {
+            onConfirm();
+            close();
+        };
+
+        cancelBtn.onclick = close;
+        modalEl.onclick = (e) => { if (e.target === modalEl) close(); };
     }
 };
 

@@ -3,14 +3,14 @@
  * Wires together router, state, pages, and components
  */
 
-import { Auth } from './auth.js?v=3.1.3';
-import { Router } from './router.js?v=3.1.3';
-import { State } from './state.js?v=3.1.3';
-import { Data } from './data.js?v=3.1.3';
-import { Components } from './components.js?v=3.1.3';
-import { Pages } from './pages.js?v=3.1.3';
-import { Payment } from './payment.js?v=3.1.3';
-import { PaymentCheckoutModal } from './paymentModal.js?v=3.1.3';
+import { Auth } from './auth.js?v=3.1.4';
+import { Router } from './router.js?v=3.1.4';
+import { State } from './state.js?v=3.1.4';
+import { Data } from './data.js?v=3.1.4';
+import { Components } from './components.js?v=3.1.4';
+import { Pages } from './pages.js?v=3.1.4';
+import { Payment } from './payment.js?v=3.1.4';
+import { PaymentCheckoutModal } from './paymentModal.js?v=3.1.4';
 
 
 // Initialize application
@@ -24,6 +24,17 @@ function setupChat() {
 
 // Global helper to prevent ReferenceErrors
 window.isLoggedIn = () => Auth.isLoggedIn();
+
+// Expose functions to window EARLY for State.set visibility
+window.updateMobileUI = updateMobileUI;
+window.updateUserUI = updateUserUI;
+window.updateNotificationsUI = updateNotificationsUI;
+window.Router = Router;
+window.State = State;
+window.Auth = Auth;
+window.Pages = Pages;
+window.Data = Data;
+window.Components = Components;
 
 async function initApp() {
     // Initialize state
@@ -166,12 +177,18 @@ function startDashboardPolling() {
             await Promise.allSettled(dataFetches);
             // Re-render if we are on a relevant dashboard page
             const currentRoute = Router.getCurrentRoute();
-            if (currentRoute && (
-                currentRoute.startsWith('/supplier') || 
-                currentRoute.startsWith('/admin') || 
-                currentRoute.startsWith('/warehouse') || 
-                currentRoute.startsWith('/dropshipper') ||
-                currentRoute === '/notifications'
+            const isInputPage = currentRoute?.path?.includes('/add') || 
+                               currentRoute?.path?.includes('/edit') || 
+                               currentRoute?.path?.includes('/create');
+            
+            const isCatalogPage = currentRoute?.path === '/supplier/products';
+
+            if (currentRoute && currentRoute.path && !isInputPage && !isCatalogPage && (
+                currentRoute.path.startsWith('/supplier') || 
+                currentRoute.path.startsWith('/admin') || 
+                currentRoute.path.startsWith('/warehouse') || 
+                currentRoute.path.startsWith('/dropshipper') ||
+                currentRoute.path === '/notifications'
             )) {
                 Router.handleRoute();
             }
@@ -573,10 +590,9 @@ function setupUserDropdown() {
             e.preventDefault();
             Auth.logout();
             userDropdown.classList.add('hidden');
-            updateUserUI();
             Components.showNotification('Logged out successfully', 'success');
             setTimeout(() => {
-                window.location.hash = '/';
+                window.location.hash = '#/';
                 window.location.reload();
             }, 500);
         };
@@ -634,6 +650,13 @@ function setupNotifications() {
         });
     }
 
+    // Request native notification permission
+    if ("Notification" in window && Notification.permission === "default") {
+        setTimeout(() => {
+            Notification.requestPermission();
+        }, 5000); // Ask after 5s to avoid annoying user immediately
+    }
+
     // Handle dropdown toggle visibility
     document.addEventListener('click', (e) => {
         if (!wrapper.contains(e.target)) {
@@ -645,9 +668,32 @@ function setupNotifications() {
     updateNotificationsUI();
 
     // Poll for new notifications every 60 seconds
-    setInterval(() => {
+    setInterval(async () => {
         if (window.isLoggedIn()) {
-            State.fetchNotifications().then(() => updateNotificationsUI());
+            const oldNotifications = [...(State.get().notifications || [])];
+            const newNotifications = await State.fetchNotifications();
+            
+            // Check for really new ones (not in old list by ID)
+            const brandNew = newNotifications.filter(n => !oldNotifications.some(old => old.id === n.id));
+            
+            if (brandNew.length > 0) {
+                updateNotificationsUI();
+                
+                // Show native browser notification
+                if ("Notification" in window && Notification.permission === "granted") {
+                    brandNew.forEach(n => {
+                        const nativeNotify = new Notification(n.title, {
+                            body: n.message,
+                            icon: 'assets/favicon.png'
+                        });
+                        nativeNotify.onclick = () => {
+                            window.focus();
+                            window.location.hash = '/notifications';
+                            nativeNotify.close();
+                        };
+                    });
+                }
+            }
         }
     }, 60000);
 }
@@ -695,18 +741,32 @@ function updateNotificationsUI() {
 
 window.markNotificationRead = async (id, event) => {
     event.stopPropagation();
+    const notifications = State.get().notifications || [];
+    const notification = notifications.find(n => n.id === id);
+    
+    // Mark as read in background
     const success = await State.markNotificationAsRead(id);
     if (success) {
         updateNotificationsUI();
+        
+        // Deep-linking logic
+        if (notification && notification.link) {
+            Router.navigate(notification.link);
+        }
     }
 };
 
 function updateMobileUI() {
+    const role = State.get().userRole;
+    console.log('[UI] Updating Mobile Nav for role:', role);
+    
     const bottomNav = document.getElementById('mobile-bottom-nav');
     const sideMenu = document.getElementById('mobile-menu-content');
     
     if (bottomNav) {
+        bottomNav.setAttribute('data-role', role);
         bottomNav.innerHTML = Components.BottomNav();
+        console.log(`[UI] Bottom Nav updated for role: ${role}`);
     }
     
     if (sideMenu) {
@@ -968,14 +1028,6 @@ window.handlePayout = async (e) => {
         submitBtn.textContent = 'Withdraw Now';
     }
 };
-
-// Make Router and State globally available
-window.Router = Router;
-window.State = State;
-window.Auth = Auth;
-window.Pages = Pages;
-window.Data = Data;
-window.Components = Components;
 
 // Initialize Sliders
 window.initPriceSliders = () => {

@@ -3,12 +3,12 @@
  * Centralized page rendering for all user types
  */
 
-import { Data } from './data.js?v=3.1.3';
-import { State } from './state.js?v=3.1.3';
-import { Router } from './router.js?v=3.1.3';
-import { Components } from './components.js?v=3.1.3';
-import { Tracking } from './tracking.js?v=3.1.3';
-import { Auth } from './auth.js?v=3.1.3';
+import { Data } from './data.js?v=3.1.4';
+import { State } from './state.js?v=3.1.4';
+import { Router } from './router.js?v=3.1.4';
+import { Components } from './components.js?v=3.1.4';
+import { Tracking } from './tracking.js?v=3.1.4';
+import { Auth } from './auth.js?v=3.1.4';
 
 
 export const Pages = {
@@ -446,12 +446,8 @@ export const Pages = {
                 Components.showNotification('Email verified! Welcome to Xperiencestore 🎉', 'success');
                 const role = result.user?.role || 'consumer';
                 setTimeout(() => {
-                    if (role === 'admin') Router.navigate('/admin/reports');
-                    else if (role === 'consumer') Router.navigate('/products');
-                    else if (role === 'business') Router.navigate('/business/account');
-                    else if (role === 'dropshipper') Router.navigate('/dropshipper/storefront');
-                    else if (role === 'supplier') Router.navigate('/supplier/reports');
-                    else Router.navigate('/');
+                    window.location.hash = '#/';
+                    window.location.reload();
                 }, 500);
             } else {
                 Components.showNotification(result.message || 'Invalid code. Please try again.', 'error');
@@ -487,8 +483,9 @@ export const Pages = {
                     if (result.success) {
                         Components.showNotification(`Welcome back! Logged in as ${result.role}`, 'success');
                         setTimeout(() => {
+                            window.location.hash = '#/';
                             window.location.reload();
-                        }, 500); // Small delay to show notification, then reload to update UI/router state fully
+                        }, 500);
                         /*
                         // Previous navigation (kept for reference, but reload ensures full state refresh)
                         if (result.role === 'admin') Router.navigate('/admin/reports');
@@ -1125,6 +1122,13 @@ export const Pages = {
                 });
             }
 
+            // Sync all products shown here for card actions
+            window.currentProducts = [
+                ...products,
+                ...sponsored,
+                ...recommended
+            ];
+
             return `
                 <div class="space-y-12 px-4 sm:px-0">
                     <!-- Hero Section -->
@@ -1584,70 +1588,79 @@ export const Pages = {
 
             return `
                 <div class="max-w-6xl mx-auto">
-                    <h1 class="text-3xl font-bold mb-8">Shopping Cart (${cart.length} items)</h1>
+                    <h1 class="text-3xl font-bold mb-8">Shopping Cart (<span id="cart-count-title">${cart.length}</span> items)</h1>
 
                     <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
                         <!-- Cart Items -->
-                        <div class="lg:col-span-2 space-y-4">
-                            ${State.get().fetchingCart ? `
-                                ${Array(3).fill(0).map(() => Components.SkeletonCartItem()).join('')}
-                            ` : cart.map(item => `
-                                <div class="glass-card p-4 sm:p-6 rounded-2xl flex flex-col sm:flex-row gap-4 sm:gap-6 items-center sm:items-start text-center sm:text-left transition-all hover:shadow-md">
-                                    <img src="${State.getMediaUrl(item.id, 0)}" onerror="this.src='https://via.placeholder.com/150?text=No+Image'" alt="${item.name}" class="w-full sm:w-24 h-48 sm:h-24 object-cover rounded-xl shadow-sm">
-                                    <div class="flex-1 w-full">
-                                        <h3 class="font-bold mb-1 text-slate-800 text-lg sm:text-base">${item.name}</h3>
-                                        <p class="text-sm text-slate-500 mb-3">${item.category}</p>
-                                        <div class="flex flex-col sm:flex-row items-center gap-4 justify-between w-full">
-                                            <div class="flex items-center border rounded-lg overflow-hidden bg-white shadow-sm">
-                                                <button onclick="State.updateCartQuantity(${item.id}, ${item.quantity - 1}); Router.navigate('/cart')" class="px-3 py-2 hover:bg-slate-100 transition-colors bg-slate-50">-</button>
-                                                <span class="px-4 py-2 border-x font-bold min-w-[3rem] text-center">${item.quantity}</span>
-                                                <button onclick="State.updateCartQuantity(${item.id}, ${item.quantity + 1}); Router.navigate('/cart')" class="px-3 py-2 hover:bg-slate-100 transition-colors bg-slate-50">+</button>
-                                            </div>
-                                            <button onclick="State.removeFromCart(${item.id}); Router.navigate('/cart')" class="text-red-500 text-sm hover:text-red-700 hover:underline flex items-center gap-1 transition-colors p-2 sm:p-0">
-                                                <i data-lucide="trash-2" class="w-4 h-4"></i> Remove
-                                            </button>
-                                        </div>
-                                    </div>
-                                    <div class="text-center sm:text-right w-full sm:w-auto mt-2 sm:mt-0 pt-4 sm:pt-0 border-t sm:border-t-0 border-slate-100">
-                                        <p class="text-xl font-bold text-blue-600">${State.formatCurrency((Number(item.price) || 0) * (Number(item.quantity) || 0))}</p>
-                                        <p class="text-xs text-slate-400 mt-1">${State.formatCurrency(Number(item.price) || 0)} each</p>
-                                    </div>
-                                </div>
-                            `).join('')}
+                        <div class="lg:col-span-2 space-y-4" id="cart-items-list">
+                            ${this.renderCartItems(cart)}
                         </div>
 
                         <!-- Order Summary -->
-                        <div class="glass-card p-6 rounded-2xl h-fit sticky top-24">
-                            <h3 class="font-bold text-lg mb-4">Order Summary</h3>
-                                <div class="space-y-3 text-sm border-b pb-4 mb-4">
-                                    <div class="flex justify-between">
-                                        <span class="text-slate-600">Subtotal</span>
-                                        <span class="font-bold">${State.formatCurrency(total)}</span>
-                                    </div>
-                                    <div class="flex justify-between">
-                                        <span class="text-slate-600">Shipping</span>
-                                        <span class="text-green-600 font-bold">FREE</span>
-                                    </div>
-                                    <div class="flex justify-between">
-                                        <span class="text-slate-600">Tax (estimated)</span>
-                                        <span class="font-bold">${State.formatCurrency((Number(total) || 0) * 0.08)}</span>
-                                    </div>
-                                </div>
-                                <div class="flex justify-between text-xl font-bold mb-6">
-                                    <span>Total</span>
-                                    <span class="text-blue-600">${State.formatCurrency((Number(total) || 0) * 1.08)}</span>
-                                </div>
-                            <button onclick="Router.navigate('/checkout')" class="w-full bg-blue-600 text-white p-4 rounded-xl font-bold shadow-lg hover:bg-blue-700 transition-all mb-3">
-                                Proceed to Checkout
-                            </button>
-                            <button onclick="Router.navigate('/products')" class="w-full border-2 border-slate-300 p-4 rounded-xl font-bold hover:bg-slate-50 transition-all">
-                                Continue Shopping
-                            </button>
+                        <div class="glass-card p-6 rounded-2xl h-fit sticky top-24" id="cart-summary-details">
+                            ${this.renderCartSummary(total)}
                         </div>
                     </div>
                 </div>
             `;
         },
+
+        renderCartItems(cart) {
+            return cart.map(item => `
+                <div class="glass-card p-4 sm:p-6 rounded-2xl flex flex-col sm:flex-row gap-4 sm:gap-6 items-center sm:items-start text-center sm:text-left transition-all hover:shadow-md" id="cart-item-${item.id}">
+                    <img src="${State.getMediaUrl(item.id, 0)}" onerror="this.src='https://via.placeholder.com/150?text=No+Image'" alt="${item.name}" class="w-full sm:w-24 h-48 sm:h-24 object-cover rounded-xl shadow-sm">
+                    <div class="flex-1 w-full">
+                        <h3 class="font-bold mb-1 text-slate-800 text-lg sm:text-base">${item.name}</h3>
+                        <p class="text-sm text-slate-500 mb-3">${item.category}</p>
+                        <div class="flex flex-col sm:flex-row items-center gap-4 justify-between w-full">
+                            <div class="flex items-center border rounded-lg overflow-hidden bg-white shadow-sm">
+                                <button onclick="window.updateCartQty(${item.id}, ${item.quantity - 1})" class="px-3 py-2 hover:bg-slate-100 transition-colors bg-slate-50">-</button>
+                                <span class="px-4 py-2 border-x font-bold min-w-[3rem] text-center">${item.quantity}</span>
+                                <button onclick="window.updateCartQty(${item.id}, ${item.quantity + 1})" class="px-3 py-2 hover:bg-slate-100 transition-colors bg-slate-50">+</button>
+                            </div>
+                            <button onclick="window.removeCartItem(${item.id})" class="text-red-500 text-sm hover:text-red-700 hover:underline flex items-center gap-1 transition-colors p-2 sm:p-0">
+                                <i data-lucide="trash-2" class="w-4 h-4"></i> Remove
+                            </button>
+                        </div>
+                    </div>
+                    <div class="text-center sm:text-right w-full sm:w-auto mt-2 sm:mt-0 pt-4 sm:pt-0 border-t sm:border-t-0 border-slate-100">
+                        <p class="text-xl font-bold text-blue-600">${State.formatCurrency((Number(item.price) || 0) * (Number(item.quantity) || 0))}</p>
+                        <p class="text-xs text-slate-400 mt-1">${State.formatCurrency(Number(item.price) || 0)} each</p>
+                    </div>
+                </div>
+            `).join('');
+        },
+
+        renderCartSummary(total) {
+            return `
+                <h3 class="font-bold text-lg mb-4">Order Summary</h3>
+                <div class="space-y-3 text-sm border-b pb-4 mb-4">
+                    <div class="flex justify-between">
+                        <span class="text-slate-600">Subtotal</span>
+                        <span class="font-bold">${State.formatCurrency(total)}</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-slate-600">Shipping</span>
+                        <span class="text-green-600 font-bold">FREE</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-slate-600">Tax (estimated)</span>
+                        <span class="font-bold">${State.formatCurrency((Number(total) || 0) * 0.08)}</span>
+                    </div>
+                </div>
+                <div class="flex justify-between text-xl font-bold mb-6">
+                    <span>Total</span>
+                    <span class="text-blue-600">${State.formatCurrency((Number(total) || 0) * 1.08)}</span>
+                </div>
+                <button onclick="Router.navigate('/checkout')" class="w-full bg-blue-600 text-white p-4 rounded-xl font-bold shadow-lg hover:bg-blue-700 transition-all mb-3">
+                    Proceed to Checkout
+                </button>
+                <button onclick="Router.navigate('/products')" class="w-full border-2 border-slate-300 p-4 rounded-xl font-bold hover:bg-slate-50 transition-all">
+                    Continue Shopping
+                </button>
+            `;
+        },
+
 
         checkout() {
             const cart = State.get().cart;
@@ -5804,11 +5817,13 @@ export const Pages = {
                                         <p class="text-xs text-slate-400">PNG, JPG up to 5MB</p>
                                     </div>
                                     <div id="preview-gallery" class="${isEdit ? '' : 'hidden'} grid grid-cols-5 gap-2 mt-4 pointer-events-none">
-                                        ${isEdit ? `
+                                        ${isEdit ? Array.from({ length: 5 }).map((_, i) => `
                                             <div class="aspect-square rounded-lg bg-slate-100 overflow-hidden relative group">
-                                                <img src="${State.getMediaUrl(productId, 0)}" class="w-full h-full object-cover">
+                                                <img src="${State.getMediaUrl(productId, i)}" 
+                                                     onerror="this.parentElement.style.display='none'"
+                                                     class="w-full h-full object-cover">
                                             </div>
-                                        ` : ''}
+                                        `).join('') : ''}
                                     </div>
                                 </div>
                             </div>
@@ -6772,97 +6787,139 @@ export const Pages = {
         },
 
         marketing() {
-            return `
-                <div class="max-w-7xl mx-auto">
-                    <h1 class="text-3xl font-bold mb-8">Marketing & Promotions</h1>
+            const stats = State.get().marketingStats || { reach: { delivered: 0, seen: 0 }, conversion: 0, spend: 0 };
+            const coupons = State.get().coupons || [];
+            const campaigns = State.get().campaigns || [];
 
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-8 mb-8">
-                        <div class="md:col-span-2 glass-card p-6 rounded-2xl">
-                            <div class="flex justify-between items-center mb-6">
-                                <h3 class="font-bold text-lg">Active Campaigns</h3>
-                                <button class="text-blue-600 font-bold text-sm hover:underline">+ Create New</button>
+            return `
+                <div class="max-w-7xl mx-auto px-4 sm:px-0">
+                    <div class="flex items-center justify-between mb-8">
+                        <div>
+                            <h1 class="text-3xl font-bold text-slate-900 font-display">Marketing & Promotions</h1>
+                            <p class="text-slate-500">Manage campaigns, coupons, and track real-time reach.</p>
+                        </div>
+                        <button onclick="State.fetchMarketingData().then(() => Router.refresh(true))" class="p-3 bg-white border border-slate-200 rounded-2xl shadow-sm hover:shadow-md transition-all text-slate-600" title="Refresh Data">
+                            <i data-lucide="refresh-cw" class="w-5 h-5"></i>
+                        </button>
+                    </div>
+
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-12">
+                        <div class="lg:col-span-2 glass-card p-8 rounded-[2.5rem] border-white/50">
+                            <div class="flex justify-between items-center mb-8">
+                                <h3 class="font-bold text-xl text-slate-800">Active Campaigns</h3>
+                                <button onclick="window.createCampaign()" class="text-blue-600 font-bold text-sm bg-blue-50 px-4 py-2 rounded-xl hover:bg-blue-100 transition-all">+ New Campaign</button>
                             </div>
                             <div class="space-y-4">
-                                ${['Summer Sale 2026', 'New Customer Welcome', 'Black Friday Early Access'].map(campaign => `
-                                    <div class="border border-slate-100 rounded-xl p-4 flex flex-col sm:flex-row items-center sm:items-center justify-between gap-4 hover:shadow-md transition-all bg-white">
-                                        <div class="flex items-center gap-4">
-                                            <div class="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
-                                                <i data-lucide="megaphone" class="w-6 h-6 text-purple-600"></i>
+                                ${campaigns.length > 0 ? campaigns.map(campaign => `
+                                    <div class="group border border-slate-100 rounded-2xl p-5 flex flex-col sm:flex-row items-center justify-between gap-4 hover:border-blue-200 hover:shadow-xl hover:shadow-blue-500/5 transition-all bg-white">
+                                        <div class="flex items-center gap-5">
+                                            <div class="w-14 h-14 bg-purple-100 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform">
+                                                <i data-lucide="megaphone" class="w-7 h-7 text-purple-600"></i>
                                             </div>
                                             <div>
-                                                <h4 class="font-bold text-slate-800">${campaign}</h4>
-                                                <p class="text-xs text-slate-400">Ends in 5 days • 12k reach</p>
+                                                <h4 class="font-bold text-slate-800 text-lg">${campaign.title}</h4>
+                                                <p class="text-sm text-slate-400">Created: ${new Date(campaign.created_at).toLocaleDateString()} • ${campaign.reach_count || 0} reach</p>
                                             </div>
                                         </div>
                                         <div class="text-right">
-                                            <div class="flex items-center gap-2 mb-1">
+                                            <div class="flex items-center gap-2 mb-2 justify-end">
                                                 <span class="text-xs font-bold text-slate-500">ROI</span>
-                                                <span class="text-sm font-bold text-green-600">450%</span>
+                                                <span class="text-sm font-bold text-green-600">${campaign.roi || '0'}%</span>
                                             </div>
-                                            <div class="w-24 bg-slate-100 rounded-full h-1.5 ml-auto">
-                                                <div class="bg-green-500 h-1.5 rounded-full" style="width: 75%"></div>
+                                            <div class="w-32 bg-slate-100 rounded-full h-2">
+                                                <div class="bg-green-500 h-2 rounded-full" style="width: ${Math.min(100, campaign.roi || 0)}%"></div>
                                             </div>
                                         </div>
                                     </div>
-                                `).join('')}
+                                `).join('') : `
+                                    <div class="text-center py-12 text-slate-400 bg-slate-50 rounded-3xl border-2 border-dashed border-slate-200">
+                                        <i data-lucide="inbox" class="w-12 h-12 mx-auto mb-3 opacity-20"></i>
+                                        <p>No active campaigns found</p>
+                                    </div>
+                                `}
                             </div>
                         </div>
 
-                        <div class="glass-card p-6 rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-600 text-white">
-                            <h3 class="font-bold text-lg mb-4">Quick Stats</h3>
-                            <div class="space-y-6">
-                                <div>
-                                    <p class="text-blue-200 text-sm">Total Campaign Reach</p>
-                                    <p class="text-3xl font-bold">1.2M</p>
-                                </div>
-                                <div>
-                                    <p class="text-blue-200 text-sm">Conversion Rate</p>
-                                    <p class="text-3xl font-bold">2.4%</p>
-                                </div>
-                                <div>
-                                    <p class="text-blue-200 text-sm">Marketing Spend</p>
-                                    <p class="text-3xl font-bold">$45,000</p>
+                        <div class="glass-card p-8 rounded-[2.5rem] bg-slate-900 border-none text-white shadow-2xl relative overflow-hidden">
+                            <div class="relative z-10">
+                                <h3 class="font-bold text-xl mb-8">Reach Analytics</h3>
+                                <div class="space-y-10">
+                                    <div>
+                                        <p class="text-slate-400 text-xs font-bold uppercase tracking-widest mb-2">Total Delivered</p>
+                                        <p class="text-4xl font-black">${stats.reach.delivered.toLocaleString()}</p>
+                                        <div class="mt-4 flex items-center gap-2 text-xs text-green-400 bg-green-400/10 w-fit px-2 py-1 rounded-lg">
+                                            <i data-lucide="trending-up" class="w-3 h-3"></i> Real-time tracking active
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <p class="text-slate-400 text-xs font-bold uppercase tracking-widest mb-2">Total Seen</p>
+                                        <div class="flex items-baseline gap-3">
+                                            <p class="text-4xl font-black">${stats.reach.seen.toLocaleString()}</p>
+                                            <p class="text-blue-400 font-bold">(${stats.reach.delivered > 0 ? ((stats.reach.seen / stats.reach.delivered) * 100).toFixed(1) : 0}%)</p>
+                                        </div>
+                                        <div class="w-full bg-white/10 rounded-full h-2.5 mt-4 overflow-hidden">
+                                            <div class="bg-blue-500 h-2.5 rounded-full transition-all duration-1000" style="width: ${stats.reach.delivered > 0 ? (stats.reach.seen / stats.reach.delivered) * 100 : 0}%"></div>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <p class="text-slate-400 text-xs font-bold uppercase tracking-widest mb-2">Platform ROI</p>
+                                        <p class="text-4xl font-black text-green-400">${stats.conversion || '0.0'}%</p>
+                                    </div>
                                 </div>
                             </div>
+                            <!-- Decorative background -->
+                            <div class="absolute -bottom-20 -right-20 w-64 h-64 bg-blue-600/20 rounded-full blur-[100px]"></div>
                         </div>
                     </div>
 
-                    <div class="glass-card p-6 rounded-2xl">
-                        <div class="flex justify-between items-center mb-6">
-                            <h3 class="font-bold text-lg">Coupons & Vouchers</h3>
-                            <button class="bg-slate-900 text-white px-4 py-2 rounded-lg text-sm font-bold shadow-lg">Add Coupon</button>
+                    <div class="glass-card p-8 rounded-[2.5rem] border-white/50 mb-12 shadow-sm">
+                        <div class="flex flex-col sm:flex-row justify-between items-center mb-8 gap-4">
+                            <h3 class="font-bold text-xl text-slate-800">Coupons & Vouchers</h3>
+                            <button onclick="window.createCoupon()" class="w-full sm:w-auto bg-slate-900 text-white px-6 py-3 rounded-2xl text-sm font-bold shadow-xl shadow-slate-200 hover:bg-slate-800 transition-all flex items-center justify-center gap-2">
+                                <i data-lucide="plus-circle" class="w-4 h-4"></i> Add Coupon
+                            </button>
                         </div>
-                        <table class="w-full text-sm">
-                            <thead class="bg-slate-50 text-slate-500">
-                                <tr>
-                                    <th class="text-left p-4 rounded-l-lg">Code</th>
-                                    <th class="text-left p-4">Discount</th>
-                                    <th class="text-left p-4">Usage</th>
-                                    <th class="text-left p-4">Status</th>
-                                    <th class="text-right p-4 rounded-r-lg">Expiry</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                ${[
-                    { code: 'WELCOME10', disc: '10%', use: '1,240', status: 'Active', exp: 'Never' },
-                    { code: 'SUMMER25', disc: '25%', use: '450', status: 'Scheduled', exp: 'Jul 30' },
-                    { code: 'FLASH50', disc: '$50 Off', use: '89', status: 'Expired', exp: 'Jan 10' },
-                    { code: 'SHIPFREE', disc: 'Free Ship', use: '3,102', status: 'Active', exp: 'Dec 31' }
-                ].map(c => `
-                                    <tr class="border-b border-slate-50 last:border-0">
-                                        <td class="p-4 font-mono font-bold text-slate-800">${c.code}</td>
-                                        <td class="p-4">${c.disc}</td>
-                                        <td class="p-4 text-slate-600">${c.use}</td>
-                                        <td class="p-4">
-                                            <span class="px-2 py-1 rounded text-xs font-bold ${c.status === 'Active' ? 'bg-green-100 text-green-600' : c.status === 'expired' ? 'bg-red-100 text-red-600' : 'bg-blue-100 text-blue-600'}">
-                                                ${c.status}
-                                            </span>
-                                        </td>
-                                        <td class="p-4 text-right text-slate-500">${c.exp}</td>
+                        <div class="overflow-x-auto -mx-8 sm:mx-0">
+                            <table class="w-full text-sm">
+                                <thead class="bg-slate-50 text-slate-500 font-bold uppercase text-[10px] tracking-widest">
+                                    <tr>
+                                        <th class="text-left p-6 first:rounded-l-3xl">Code</th>
+                                        <th class="text-left p-6">Discount</th>
+                                        <th class="text-left p-6">Usage</th>
+                                        <th class="text-left p-6">Status</th>
+                                        <th class="text-left p-6">Expiry</th>
+                                        <th class="text-right p-6 last:rounded-r-3xl">Actions</th>
                                     </tr>
-                                `).join('')}
-                            </tbody>
-                        </table>
+                                </thead>
+                                <tbody class="divide-y divide-slate-50">
+                                    ${coupons.length > 0 ? coupons.map(c => `
+                                        <tr class="hover:bg-slate-50/50 transition-colors">
+                                            <td class="p-6 font-mono font-bold text-slate-800">${c.code}</td>
+                                            <td class="p-6 font-bold text-blue-600">${c.discount_type === 'percentage' ? c.discount_value + '%' : '₦' + Number(c.discount_value).toLocaleString()}</td>
+                                            <td class="p-6 text-slate-600">${c.usage_count} / ${c.usage_limit || '∞'}</td>
+                                            <td class="p-6">
+                                                <span class="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${c.is_active ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'}">
+                                                    ${c.is_active ? 'Active' : 'Paused'}
+                                                </span>
+                                            </td>
+                                            <td class="p-6 text-slate-500">${c.expires_at ? new Date(c.expires_at).toLocaleDateString() : 'Never'}</td>
+                                            <td class="p-6 text-right">
+                                                <div class="flex justify-end gap-2">
+                                                    <button onclick="window.pauseCoupon(${c.id})" class="p-2 hover:bg-white border border-transparent hover:border-slate-200 rounded-xl transition-all" title="${c.is_active ? 'Pause' : 'Resume'}">
+                                                        <i data-lucide="${c.is_active ? 'pause' : 'play'}" class="w-4 h-4 text-slate-400"></i>
+                                                    </button>
+                                                    <button onclick="window.deleteCoupon(${c.id})" class="p-2 hover:bg-red-50 rounded-xl transition-all" title="Delete">
+                                                        <i data-lucide="trash-2" class="w-4 h-4 text-red-500"></i>
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    `).join('') : `
+                                        <tr><td colspan="6" class="p-12 text-center text-slate-400">No coupons active</td></tr>
+                                    `}
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
 
                     <!-- Platform Broadcast -->
@@ -6877,15 +6934,26 @@ export const Pages = {
                             </div>
                         </div>
 
-                        <form onsubmit="event.preventDefault(); window.broadcastAdminNotification(this);" class="space-y-4">
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div class="space-y-2">
-                                    <label class="block text-sm font-bold text-slate-700">Notification Title</label>
-                                    <input type="text" name="title" placeholder="e.g., Flash Sale live now!" class="w-full p-3 bg-white border border-slate-200 rounded-xl outline-none focus:border-blue-500 shadow-sm" required>
+                        <form onsubmit="event.preventDefault(); window.broadcastAdminNotification(this);" class="space-y-6">
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                <div class="space-y-2 col-span-1 md:col-span-2">
+                                    <label class="block text-xs font-black text-slate-400 uppercase tracking-widest">Notification Title</label>
+                                    <input type="text" name="title" placeholder="e.g., Flash Sale live now!" class="w-full p-4 bg-white border border-slate-200 rounded-[1.25rem] outline-none focus:border-blue-500 shadow-sm transition-all" required>
                                 </div>
                                 <div class="space-y-2">
-                                    <label class="block text-sm font-bold text-slate-700">Target Role (Optional)</label>
-                                    <select name="role" class="w-full p-3 bg-white border border-slate-200 rounded-xl outline-none focus:border-blue-500 shadow-sm">
+                                    <label class="block text-xs font-black text-slate-400 uppercase tracking-widest">Delivery Channel</label>
+                                    <select name="channel" class="w-full p-4 bg-white border border-slate-200 rounded-[1.25rem] outline-none focus:border-blue-500 shadow-sm transition-all font-bold text-slate-700">
+                                        <option value="push">Push Notification (App + Device)</option>
+                                        <option value="email">Email Campaign (Brevo)</option>
+                                        <option value="both">Both (Email & Push)</option>
+                                    </select>
+                                </div>
+                            </div>
+                            
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div class="space-y-2">
+                                    <label class="block text-xs font-black text-slate-400 uppercase tracking-widest">Target Audience</label>
+                                    <select name="role" class="w-full p-4 bg-white border border-slate-200 rounded-[1.25rem] outline-none focus:border-blue-500 shadow-sm transition-all font-bold text-slate-700">
                                         <option value="">All Users</option>
                                         <option value="consumer">Consumers</option>
                                         <option value="business">Business Accounts</option>
@@ -6893,20 +6961,32 @@ export const Pages = {
                                         <option value="dropshipper">Dropshippers</option>
                                     </select>
                                 </div>
+                                <div class="space-y-2">
+                                    <label class="block text-xs font-black text-slate-400 uppercase tracking-widest">Alert Type</label>
+                                    <select name="type" class="w-full p-4 bg-white border border-slate-200 rounded-[1.25rem] outline-none focus:border-blue-500 shadow-sm transition-all font-bold text-slate-700">
+                                        <option value="info">Information (Blue)</option>
+                                        <option value="success">Success (Green)</option>
+                                        <option value="warning">Alert (Orange)</option>
+                                        <option value="critical">Critical (Red)</option>
+                                    </select>
+                                </div>
                             </div>
+
                             <div class="space-y-2">
-                                <label class="block text-sm font-bold text-slate-700">Message Body</label>
-                                <textarea name="message" rows="3" placeholder="Enter the detailed message here..." class="w-full p-3 bg-white border border-slate-200 rounded-xl outline-none focus:border-blue-500 shadow-sm" required></textarea>
+                                <label class="block text-xs font-black text-slate-400 uppercase tracking-widest">Deep Link Path (Optional)</label>
+                                <input type="text" name="link" placeholder="e.g., #/order/123 or #/products" class="w-full p-4 bg-white border border-slate-200 rounded-[1.25rem] outline-none focus:border-blue-500 shadow-sm transition-all font-mono text-xs">
+                                <p class="text-[9px] text-slate-400">If provided, users will be taken to this page when clicking the notification.</p>
                             </div>
-                            <div class="flex justify-end gap-3">
-                                <select name="type" class="p-3 bg-white border border-slate-200 rounded-xl outline-none text-sm font-bold shadow-sm">
-                                    <option value="info">ℹ️ Info (Blue)</option>
-                                    <option value="success">✅ Success (Green)</option>
-                                    <option value="warning">⚠️ Warning (Orange)</option>
-                                    <option value="error">🚨 Alert (Red)</option>
-                                </select>
-                                <button type="submit" class="bg-blue-600 text-white px-8 py-3 rounded-xl font-bold hover:bg-blue-700 transition-all shadow-lg shadow-blue-200 flex items-center gap-2">
-                                    <i data-lucide="send" class="w-4 h-4"></i> Send Broadcast
+
+                            <div class="space-y-2">
+                                <label class="block text-xs font-black text-slate-400 uppercase tracking-widest">Message Content</label>
+                                <textarea name="message" rows="4" placeholder="Type your announcement here..." class="w-full p-4 bg-white border border-slate-200 rounded-[1.25rem] outline-none focus:border-blue-500 shadow-sm transition-all" required></textarea>
+                            </div>
+
+                            <div class="flex items-center justify-between pt-4">
+                                <p class="text-xs text-slate-400 max-w-sm">Push notifications are tracked for delivery and seen rates. Emails are sent via Brevo (hello@xperiencestore.store).</p>
+                                <button type="submit" class="bg-blue-600 text-white px-10 py-4 rounded-[1.25rem] font-bold hover:bg-blue-700 transition-all shadow-xl shadow-blue-200 flex items-center justify-center gap-3">
+                                    <i data-lucide="send" class="w-5 h-5"></i> Launch Broadcast
                                 </button>
                             </div>
                         </form>
@@ -7252,103 +7332,6 @@ window.reportIssue = (orderId) => {
     }
 };
 
-window.handleImagePreview = (input) => {
-    const preview = document.getElementById('preview-gallery');
-    const placeholder = document.getElementById('image-upload-placeholder');
-    preview.innerHTML = '';
-
-    if (input.files && input.files.length > 0) {
-        placeholder.classList.add('hidden');
-        preview.classList.remove('hidden');
-        preview.innerHTML = ''; // Clear existing
-
-        Array.from(input.files).slice(0, 5).forEach(file => {
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                const img = document.createElement('div');
-                img.className = 'aspect-square rounded-lg bg-slate-100 overflow-hidden relative group';
-                img.innerHTML = `
-                    <img src="${e.target.result}" class="w-full h-full object-cover">
-                    <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                        <i data-lucide="check" class="text-white w-6 h-6"></i>
-                    </div>
-                `;
-                preview.appendChild(img);
-                lucide.createIcons(); // Re-run icons for new elements
-            };
-            reader.readAsDataURL(file);
-        });
-    } else {
-        placeholder.classList.remove('hidden');
-        preview.classList.add('hidden');
-    }
-};
-
-window.submitProduct = async (event, productId = null) => {
-    const form = event.target;
-    const isEdit = !!productId;
-
-    // Only require images for new products
-    const imageInput = form.querySelector('input[name="images"]');
-    if (!isEdit && imageInput.files.length === 0) {
-        Components.showNotification('Please upload at least one product image', 'error');
-        return;
-    }
-
-    const submitBtn = form.querySelector('button[type="submit"]');
-    const originalText = submitBtn.innerHTML;
-    submitBtn.disabled = true;
-    submitBtn.innerHTML = '<i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i> Saving...';
-    lucide.createIcons();
-
-    try {
-        const token = Auth.getToken();
-
-        let response;
-        if (isEdit) {
-            // For editing, we use JSON if no new images are selected, or we can use FormData anyway
-            const data = {};
-            const formData = new FormData(form);
-            formData.forEach((value, key) => {
-                if (key !== 'images') data[key] = value;
-            });
-
-            response = await fetch(`/api/products/${productId}`, {
-                method: 'PUT',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(data)
-            });
-        } else {
-            const formData = new FormData(form);
-            response = await fetch('/api/products', {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${token}`
-                },
-                body: formData
-            });
-        }
-
-        if (response.ok) {
-            Components.showNotification(isEdit ? 'Product updated successfully!' : 'Product created successfully!', 'success');
-            await State.fetchProducts();
-            Router.navigate('/supplier/products');
-        } else {
-            const error = await response.json();
-            Components.showNotification(error.message || 'Action failed', 'error');
-        }
-    } catch (error) {
-        console.error(error);
-        Components.showNotification('An error occurred. Please try again.', 'error');
-    } finally {
-        submitBtn.disabled = false;
-        submitBtn.innerHTML = originalText;
-        lucide.createIcons();
-    }
-};
 
 window.handlePayout = async (event) => {
     event.preventDefault();
@@ -7606,7 +7589,8 @@ window.broadcastAdminNotification = async (form) => {
         title: formData.get('title'),
         message: formData.get('message'),
         type: formData.get('type') || 'info',
-        role: formData.get('role') || null
+        role: formData.get('role') || null,
+        channel: formData.get('channel') || 'push'
     };
 
     if (!data.title || !data.message) {
@@ -7614,11 +7598,22 @@ window.broadcastAdminNotification = async (form) => {
         return;
     }
 
+    const submitBtn = form.querySelector('button[type="submit"]');
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<i data-lucide="loader" class="w-4 h-4 animate-spin"></i> Dispatching...';
+
     const success = await State.broadcastAdminNotification(data);
     if (success) {
         form.reset();
-        Components.showNotification('Broadcast sent to all eligible users', 'success');
+        Components.showNotification(`Broadcast launched via ${data.channel.toUpperCase()}`, 'success');
+        // Refresh analytics immediately
+        await State.fetchMarketingData();
+        Router.refresh(true);
     }
+
+    submitBtn.disabled = false;
+    submitBtn.innerHTML = '<i data-lucide="send" class="w-5 h-5"></i> Launch Broadcast';
+    if (window.lucide) lucide.createIcons();
 };
 
 window.adminUserSearch = debounce((search) => {
@@ -7651,3 +7646,138 @@ window.viewAdminLogArchive = async (key) => {
         }
     }
 };
+
+// ===========================================================
+// SUPPLIER PRODUCT HANDLERS
+// ===========================================================
+
+window.editProduct = (productId) => {
+    Router.navigate(`/supplier/products/edit?id=${productId}`);
+};
+
+window.deleteProduct = (productId) => {
+    Components.ConfirmModal(
+        'Delete Product',
+        'Are you sure you want to remove this product? This action cannot be undone.',
+        async () => {
+            const success = await State.deleteSupplierProduct(productId);
+            if (success) {
+                // Silent refresh to update the list without a flicker
+                Router.refresh(true);
+            }
+        },
+        'Delete'
+    );
+};
+
+window.handleImagePreview = (input) => {
+    const gallery = document.getElementById('preview-gallery');
+    const placeholder = document.getElementById('image-upload-placeholder');
+    if (!gallery) return;
+
+    if (input.files && input.files.length > 0) {
+        placeholder?.classList.add('hidden');
+        gallery.classList.remove('hidden');
+        gallery.innerHTML = ''; // Clear old previews (existing or previous selection)
+
+        Array.from(input.files).forEach(file => {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                gallery.insertAdjacentHTML('beforeend', `
+                    <div class="aspect-square rounded-lg bg-slate-100 overflow-hidden relative group">
+                        <img src="${e.target.result}" class="w-full h-full object-cover">
+                    </div>
+                `);
+            };
+            reader.readAsDataURL(file);
+        });
+    } else {
+        // If no files selected, we don't clear the gallery if we're in edit mode 
+        // because the existing images are still there until replaced.
+        // However, if it's a fresh add, we show placeholder.
+    }
+};
+
+window.submitProduct = async (event, productId) => {
+    const form = event.target;
+    const formData = new FormData(form);
+    const isEdit = !!productId;
+
+    const data = {
+        name: formData.get('name'),
+        description: formData.get('description'),
+        price: parseFloat(formData.get('price')),
+        stock: parseInt(formData.get('stock')),
+        category: formData.get('category'),
+        images: form.querySelector('input[name="images"]').files
+    };
+
+    const submitBtn = form.querySelector('button[type="submit"]');
+    const originalText = submitBtn.innerHTML;
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i> Saving...';
+    if (window.lucide) lucide.createIcons();
+
+    try {
+        let success;
+        if (isEdit) {
+            success = await State.updateSupplierProduct(productId, data);
+        } else {
+            success = await State.createSupplierProduct(data);
+        }
+
+        if (success) {
+            Components.showNotification(isEdit ? 'Product updated' : 'Product created', 'success');
+            Router.navigate('/supplier/products');
+        }
+    } finally {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = originalText;
+        if (window.lucide) lucide.createIcons();
+    }
+};
+
+// ===========================================================
+// MARKETING & COUPON HANDLERS
+// ===========================================================
+
+// ===========================================================
+// CART UX HANDLERS (PARTIAL RE-RENDERING)
+// ===========================================================
+
+window.updateCartUI = () => {
+    const cart = State.get().cart;
+    const total = State.getCartTotal();
+    
+    // If cart becomes empty, just full re-render
+    if (cart.length === 0) {
+        Router.navigate('/cart');
+        return;
+    }
+
+    const itemsContainer = document.getElementById('cart-items-list');
+    const summaryContainer = document.getElementById('cart-summary-details');
+    const countTitle = document.getElementById('cart-count-title');
+
+    if (itemsContainer) itemsContainer.innerHTML = Pages.renderCartItems(cart);
+    if (summaryContainer) summaryContainer.innerHTML = Pages.renderCartSummary(total);
+    if (countTitle) countTitle.textContent = cart.length;
+
+    // Update global cart badge
+    Components.updateCartBadge();
+    
+    if (window.lucide) lucide.createIcons();
+};
+
+window.updateCartQty = async (id, qty) => {
+    if (qty < 1) return;
+    await State.updateCartQuantity(id, qty);
+    window.updateCartUI();
+};
+
+
+window.removeCartItem = async (id) => {
+    await State.removeFromCart(id);
+    window.updateCartUI();
+};
+

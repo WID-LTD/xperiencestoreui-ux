@@ -145,8 +145,41 @@ export const State = {
     },
 
     set(update) {
+        const oldRole = this._state.userRole;
         this._state = { ...this._state, ...update };
         this._persistNonSensitive();
+        
+        if (update.userRole && update.userRole !== oldRole) {
+            console.log(`[STATE] Role changed: ${oldRole} -> ${update.userRole}`);
+        }
+
+        // Globally notify UI of state change for reactive updates (e.g., role changes)
+        if (window.updateMobileUI) window.updateMobileUI();
+        if (window.updateNotificationsUI) window.updateNotificationsUI();
+        if (window.updateUserUI) window.updateUserUI();
+    },
+
+    setUser(role, user) {
+        this.set({ 
+            userRole: role || 'consumer', 
+            currentUser: user,
+            loading: false 
+        });
+        // After setting user, refresh their specific data
+        this.refreshAllData();
+    },
+
+    logout() {
+        this.set({ 
+            userRole: 'consumer', 
+            currentUser: null,
+            cart: [],
+            wishlist: [],
+            notifications: []
+        });
+        // Clear sensitive caches
+        localStorage.removeItem('xperince_session');
+        document.cookie = "xperince_user=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
     },
 
     // Fetch products from API with optional filters
@@ -198,6 +231,17 @@ export const State = {
                 const notifications = await res.json();
                 this._state.notifications = notifications;
                 this._persistNonSensitive();
+
+                // Real-time: Mark undelivered notifications as delivered on this device
+                const undelivered = notifications.filter(n => !n.delivered_at).map(n => n.id);
+                if (undelivered.length > 0) {
+                    await fetch(`${API}/notifications/mark-delivered`, {
+                        method: 'POST',
+                        headers: authHeaders(),
+                        body: JSON.stringify({ ids: undelivered })
+                    });
+                }
+
                 return notifications;
             }
         } catch (err) {
@@ -370,11 +414,6 @@ export const State = {
         return { store: { store_name: 'My Store', store_slug: 'mystore', description: '' }, products: [] };
     },
 
-
-
-
-
-
     async handlePayout(event) {
         event.preventDefault();
         const form = event.target;
@@ -450,7 +489,7 @@ export const State = {
                 this._state.cart = data.items || [];
                 this._persistNonSensitive();
                 this._updateCartBadge();
-                this.notify('Added to cart', 'success');
+                this.notify(`${product.name} added to cart`, 'success');
                 return this._state.cart;
             } catch (err) {
                 this.notify(err.message || 'Failed to add to cart', 'error');
@@ -463,7 +502,7 @@ export const State = {
         else { this._state.cart.push({ ...product, quantity }); }
         this._persistNonSensitive();
         this._updateCartBadge();
-        this.notify('Added to cart', 'success');
+        this.notify(`${product.name} added to cart`, 'success');
         return this._state.cart;
     },
 
@@ -537,12 +576,27 @@ export const State = {
     },
 
     _updateCartBadge() {
-        const badge = document.getElementById('cart-badge');
-        if (badge) {
-            const count = this.getCartCount();
-            badge.textContent = count;
-            badge.classList.toggle('hidden', count === 0);
-        }
+        const count = this.getCartCount();
+        
+        // Update both the main app badge and component badges
+        const badges = [
+            document.getElementById('cart-badge'),
+            document.getElementById('mobile-cart-badge'),
+            ...document.querySelectorAll('.shopping-cart-badge')
+        ];
+
+        badges.forEach(badge => {
+            if (badge) {
+                badge.textContent = count;
+                badge.classList.toggle('hidden', count === 0);
+                // Also handle display: none if using utility classes
+                if (count === 0) {
+                    badge.style.display = 'none';
+                } else {
+                    badge.style.display = 'flex';
+                }
+            }
+        });
     },
 
     // ===========================================================
@@ -552,10 +606,11 @@ export const State = {
     async addToWishlist(product) {
         if (isLoggedIn()) {
             try {
+                // Assuming _dbWishlistOp is similar to _dbCartOp
                 const data = await _dbWishlistOp('POST', '', { productId: product.id });
                 this._state.wishlist = data.items || [];
                 this._persistNonSensitive();
-                this.notify('Added to wishlist', 'success');
+                this.notify(`${product.name} added to wishlist`, 'success');
                 return this._state.wishlist;
             } catch (err) {
                 this.notify(err.message || 'Failed to add to wishlist', 'error');
@@ -565,7 +620,7 @@ export const State = {
         if (!this._state.wishlist.find(i => i.id === product.id)) {
             this._state.wishlist.push(product);
             this._persistNonSensitive();
-            this.notify('Added to wishlist', 'success');
+            this.notify(`${product.name} added to wishlist`, 'success');
         }
         return this._state.wishlist;
     },
@@ -647,6 +702,7 @@ export const State = {
     // ===========================================================
 
     async fetchSupplierStats() {
+        this._state.loading = true;
         try {
             const res = await fetch(`${API}/supplier/stats`, { headers: authHeaders() });
             if (res.ok) {
@@ -656,11 +712,14 @@ export const State = {
             }
         } catch (err) {
             console.error('Fetch supplier stats error:', err);
+        } finally {
+            this._state.loading = false;
         }
         return null;
     },
 
     async fetchSupplierOrders() {
+        this._state.loading = true;
         try {
             const res = await fetch(`${API}/supplier/orders`, { headers: authHeaders() });
             if (res.ok) {
@@ -670,11 +729,14 @@ export const State = {
             }
         } catch (err) {
             console.error('Fetch supplier orders error:', err);
+        } finally {
+            this._state.loading = false;
         }
         return [];
     },
 
     async fetchSupplierProducts() {
+        this._state.loading = true;
         try {
             const res = await fetch(`${API}/supplier/products`, { headers: authHeaders() });
             if (res.ok) {
@@ -684,6 +746,8 @@ export const State = {
             }
         } catch (err) {
             console.error('Fetch supplier products error:', err);
+        } finally {
+            this._state.loading = false;
         }
         return [];
     },
@@ -1394,6 +1458,162 @@ export const State = {
             console.error('Fetch payout history error:', err);
         }
         return [];
+    },
+
+    // --- Marketing & Coupon Management ---
+    async fetchMarketingData() {
+        try {
+            const res = await fetch(`${API}/admin/marketing/analytics`, { headers: authHeaders() });
+            if (res.ok) {
+                const data = await res.json();
+                this._state.marketingStats = data;
+                this._state.campaigns = data.campaigns || [];
+                this._persistNonSensitive();
+                return data;
+            }
+        } catch (err) {
+            console.error('Fetch marketing stats error:', err);
+        }
+        return null;
+    },
+
+    async fetchCoupons() {
+        try {
+            const res = await fetch(`${API}/admin/coupons`, { headers: authHeaders() });
+            if (res.ok) {
+                const data = await res.json();
+                this._state.coupons = data;
+                this._persistNonSensitive();
+                return data;
+            }
+        } catch (err) {
+            console.error('Fetch coupons error:', err);
+        }
+        return [];
+    },
+
+    async toggleCouponStatus(id) {
+        try {
+            const res = await fetch(`${API}/admin/coupons/${id}/toggle`, {
+                method: 'PATCH',
+                headers: authHeaders()
+            });
+            if (res.ok) {
+                this.notify('Coupon status updated', 'success');
+                await this.fetchCoupons();
+                return true;
+            }
+        } catch (err) {
+            this.notify('Failed to update coupon', 'error');
+        }
+        return false;
+    },
+
+    async deleteCoupon(id) {
+        try {
+            const res = await fetch(`${API}/admin/coupons/${id}`, {
+                method: 'DELETE',
+                headers: authHeaders()
+            });
+            if (res.ok) {
+                this.notify('Coupon deleted', 'success');
+                await this.fetchCoupons();
+                return true;
+            }
+        } catch (err) {
+            this.notify('Failed to delete coupon', 'error');
+        }
+        return false;
+    },
+
+    // --- Supplier Product Management ---
+    async createSupplierProduct(productData) {
+        try {
+            const formData = new FormData();
+            Object.keys(productData).forEach(key => {
+                if (key === 'images' && productData.images instanceof FileList) {
+                    Array.from(productData.images).forEach(file => formData.append('images', file));
+                } else {
+                    formData.append(key, productData[key]);
+                }
+            });
+
+            const res = await fetch(`${API}/products`, {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${Auth.getToken()}` },
+                body: formData
+            });
+
+            if (res.ok) {
+                this.notify('Product created successfully', 'success');
+                await this.fetchSupplierProducts(); // Use supplier specific fetch
+                if (window.Router) window.Router.handleRoute(); // Force re-render with skeleton
+                return true;
+            } else {
+                const err = await res.json();
+                this.notify(err.message || 'Failed to create product', 'error');
+            }
+        } catch (err) {
+            console.error('Create product error:', err);
+            this.notify('Network error creating product', 'error');
+        }
+        return false;
+    },
+
+    async updateSupplierProduct(id, productData) {
+        try {
+            const formData = new FormData();
+            Object.keys(productData).forEach(key => {
+                if (key === 'images' && productData.images instanceof FileList) {
+                    Array.from(productData.images).forEach(file => formData.append('images', file));
+                } else if (productData[key] !== undefined) {
+                    formData.append(key, productData[key]);
+                }
+            });
+
+            const res = await fetch(`${API}/products/${id}`, {
+                method: 'PUT',
+                headers: { 'Authorization': `Bearer ${Auth.getToken()}` },
+                body: formData
+            });
+
+            if (res.ok) {
+                this.notify('Product updated successfully', 'success');
+                await this.fetchSupplierProducts();
+                if (window.Router) window.Router.handleRoute();
+                return true;
+            } else {
+                const err = await res.json();
+                this.notify(err.message || 'Failed to update product', 'error');
+            }
+        } catch (err) {
+            console.error('Update product error:', err);
+            this.notify('Network error updating product', 'error');
+        }
+        return false;
+    },
+
+    async deleteSupplierProduct(id) {
+        try {
+            const res = await fetch(`${API}/products/${id}`, {
+                method: 'DELETE',
+                headers: authHeaders()
+            });
+
+            if (res.ok) {
+                this.notify('Product deleted successfully', 'success');
+                await this.fetchSupplierProducts();
+                if (window.Router) window.Router.handleRoute();
+                return true;
+            } else {
+                const err = await res.json();
+                this.notify(err.message || 'Failed to delete product', 'error');
+            }
+        } catch (err) {
+            console.error('Delete product error:', err);
+            this.notify('Network error deleting product', 'error');
+        }
+        return false;
     }
 };
 

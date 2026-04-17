@@ -87,6 +87,9 @@ export const Auth = {
 
             if (response.ok) {
                 Auth.setUserSession(data.role, data);
+                if (window.State) {
+                    window.State.setUser(data.role, data);
+                }
                 return { success: true, message: data.message, user: data };
             } else {
                 return { success: false, message: data.message };
@@ -213,8 +216,12 @@ export const Auth = {
     },
 
     logout: () => {
-        document.cookie = "xperince_user=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
-        localStorage.removeItem('xperince_session');
+        if (window.State) {
+            window.State.logout();
+        } else {
+            document.cookie = "xperince_user=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+            localStorage.removeItem('xperince_session');
+        }
         // Don't reload - let the app handle UI updates
     },
 
