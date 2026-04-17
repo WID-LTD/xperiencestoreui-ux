@@ -302,6 +302,8 @@ export const State = {
     // Load cart from DB and update local cache
     async _loadCartFromDB() {
         this._state.fetchingCart = true;
+        // Set global loading only if on cart page to show skeleton
+        if (window.Router?.getCurrentRoute()?.path === '/cart') this._state.loading = true;
         try {
             const data = await _dbCartOp('GET', '');
             this._state.cart = data.items || [];
@@ -310,12 +312,14 @@ export const State = {
             console.warn('Could not load cart from DB:', err.message);
         } finally {
             this._state.fetchingCart = false;
+            this._state.loading = false;
         }
     },
 
     // Load wishlist from DB and update local cache
     async _loadWishlistFromDB() {
         this._state.fetchingWishlist = true;
+        if (window.Router?.getCurrentRoute()?.path === '/wishlist') this._state.loading = true;
         try {
             const data = await _dbWishlistOp('GET', '');
             this._state.wishlist = data.items || [];
@@ -324,6 +328,7 @@ export const State = {
             console.warn('Could not load wishlist from DB:', err.message);
         } finally {
             this._state.fetchingWishlist = false;
+            this._state.loading = false;
         }
     },
 
@@ -490,6 +495,7 @@ export const State = {
                 this._persistNonSensitive();
                 this._updateCartBadge();
                 this.notify(`${product.name} added to cart`, 'success');
+                if (window.Router?.getCurrentRoute()?.path === '/cart') window.Router.handleRoute();
                 return this._state.cart;
             } catch (err) {
                 this.notify(err.message || 'Failed to add to cart', 'error');
@@ -514,6 +520,7 @@ export const State = {
                 this._persistNonSensitive();
                 this._updateCartBadge();
                 this.notify('Removed from cart', 'info');
+                if (window.Router?.getCurrentRoute()?.path === '/cart') window.Router.handleRoute();
                 return this._state.cart;
             } catch (err) {
                 this.notify('Failed to remove item', 'error');
@@ -535,6 +542,7 @@ export const State = {
                 this._state.cart = data.items || [];
                 this._persistNonSensitive();
                 this._updateCartBadge();
+                if (window.Router?.getCurrentRoute()?.path === '/cart') window.Router.handleRoute();
                 return this._state.cart;
             } catch (err) {
                 this.notify('Failed to update quantity', 'error');
@@ -611,6 +619,7 @@ export const State = {
                 this._state.wishlist = data.items || [];
                 this._persistNonSensitive();
                 this.notify(`${product.name} added to wishlist`, 'success');
+                if (window.Router?.getCurrentRoute()?.path === '/wishlist') window.Router.handleRoute();
                 return this._state.wishlist;
             } catch (err) {
                 this.notify(err.message || 'Failed to add to wishlist', 'error');
@@ -632,6 +641,7 @@ export const State = {
                 this._state.wishlist = data.items || [];
                 this._persistNonSensitive();
                 this.notify('Removed from wishlist', 'info');
+                if (window.Router?.getCurrentRoute()?.path === '/wishlist') window.Router.handleRoute();
                 return this._state.wishlist;
             } catch (err) {
                 this.notify('Failed to remove from wishlist', 'error');
