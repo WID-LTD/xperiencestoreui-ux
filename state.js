@@ -184,7 +184,7 @@ export const State = {
 
     // Fetch products from API with optional filters
     async fetchProducts(filters = {}) {
-        this._state.loading = true;
+        if (!silent) this._state.loading = true;
         try {
             const params = new URLSearchParams(filters);
             const response = await fetch(window.apiUrl(`/api/products?${params}`));
@@ -211,7 +211,7 @@ export const State = {
             if (filters.limit && !filters.category && !filters.search) this._state.fetchedRecommended = true;
             if (!Object.keys(filters).length) this._state.fetchedProducts = true;
             
-            this._state.loading = false;
+            if (!silent) this._state.loading = false;
             this._persistNonSensitive();
         }
         return this._state.products;
@@ -303,7 +303,7 @@ export const State = {
     async _loadCartFromDB() {
         this._state.fetchingCart = true;
         // Set global loading only if on cart page to show skeleton
-        if (window.Router?.getCurrentRoute()?.path === '/cart') this._state.loading = true;
+        if (window.Router?.getCurrentRoute()?.path === '/cart') if (!silent) this._state.loading = true;
         try {
             const data = await _dbCartOp('GET', '');
             this._state.cart = data.items || [];
@@ -312,14 +312,14 @@ export const State = {
             console.warn('Could not load cart from DB:', err.message);
         } finally {
             this._state.fetchingCart = false;
-            this._state.loading = false;
+            if (!silent) this._state.loading = false;
         }
     },
 
     // Load wishlist from DB and update local cache
     async _loadWishlistFromDB() {
         this._state.fetchingWishlist = true;
-        if (window.Router?.getCurrentRoute()?.path === '/wishlist') this._state.loading = true;
+        if (window.Router?.getCurrentRoute()?.path === '/wishlist') if (!silent) this._state.loading = true;
         try {
             const data = await _dbWishlistOp('GET', '');
             this._state.wishlist = data.items || [];
@@ -328,7 +328,7 @@ export const State = {
             console.warn('Could not load wishlist from DB:', err.message);
         } finally {
             this._state.fetchingWishlist = false;
-            this._state.loading = false;
+            if (!silent) this._state.loading = false;
         }
     },
 
@@ -472,7 +472,7 @@ export const State = {
     // CART METHODS (DB-backed for logged-in users, localStorage for guests)
     // ===========================================================
 
-    async fetchOrders() {
+    async fetchOrders(silent = false) {
         try {
             const res = await fetch(`${API}/orders`, { headers: authHeaders() });
             if (res.ok) {
@@ -664,7 +664,7 @@ export const State = {
     // ORDERS (DB-backed for logged-in users)
     // ===========================================================
 
-    async fetchOrders() {
+    async fetchOrders(silent = false) {
         if (!isLoggedIn()) return this._state.orders || [];
         this._state.fetchingOrders = true;
         try {
@@ -711,8 +711,8 @@ export const State = {
     // SUPPLIER METHODS
     // ===========================================================
 
-    async fetchSupplierStats() {
-        this._state.loading = true;
+    async fetchSupplierStats(silent = false) {
+        if (!silent) if (!silent) this._state.loading = true;
         try {
             const res = await fetch(`${API}/supplier/stats`, { headers: authHeaders() });
             if (res.ok) {
@@ -723,13 +723,13 @@ export const State = {
         } catch (err) {
             console.error('Fetch supplier stats error:', err);
         } finally {
-            this._state.loading = false;
+            if (!silent) if (!silent) this._state.loading = false;
         }
         return null;
     },
 
-    async fetchSupplierOrders() {
-        this._state.loading = true;
+    async fetchSupplierOrders(silent = false) {
+        if (!silent) if (!silent) this._state.loading = true;
         try {
             const res = await fetch(`${API}/supplier/orders`, { headers: authHeaders() });
             if (res.ok) {
@@ -740,13 +740,13 @@ export const State = {
         } catch (err) {
             console.error('Fetch supplier orders error:', err);
         } finally {
-            this._state.loading = false;
+            if (!silent) if (!silent) this._state.loading = false;
         }
         return [];
     },
 
-    async fetchSupplierProducts() {
-        this._state.loading = true;
+    async fetchSupplierProducts(silent = false) {
+        if (!silent) if (!silent) this._state.loading = true;
         try {
             const res = await fetch(`${API}/supplier/products`, { headers: authHeaders() });
             if (res.ok) {
@@ -757,7 +757,7 @@ export const State = {
         } catch (err) {
             console.error('Fetch supplier products error:', err);
         } finally {
-            this._state.loading = false;
+            if (!silent) if (!silent) this._state.loading = false;
         }
         return [];
     },
@@ -876,7 +876,7 @@ export const State = {
         }
     },
 
-    async fetchInventory() {
+    async fetchInventory(silent = false) {
         try {
             const res = await fetch(`${API}/warehouse/inventory`, { headers: authHeaders() });
             if (res.ok) {
@@ -1021,7 +1021,7 @@ export const State = {
         return false;
     },
 
-    async fetchAdminLogs() {
+    async fetchAdminLogs(silent = false) {
         try {
             const res = await fetch(`${API}/admin/logs`, { headers: authHeaders() });
             if (res.ok) {
@@ -1051,7 +1051,7 @@ export const State = {
         return null;
     },
 
-    async fetchAdminStats() {
+    async fetchAdminStats(silent = false) {
         try {
             const res = await fetch(`${API}/admin/stats`, { headers: authHeaders() });
             if (res.ok) {
@@ -1102,7 +1102,7 @@ export const State = {
         return false;
     },
 
-    async fetchAdminOrders() {
+    async fetchAdminOrders(silent = false) {
         try {
             const res = await fetch(`${API}/admin/orders`, { headers: authHeaders() });
             if (res.ok) {
@@ -1151,7 +1151,7 @@ export const State = {
         return false;
     },
 
-    async fetchAdminAllProducts() {
+    async fetchAdminAllProducts(silent = false) {
         try {
             const res = await fetch(`${API}/admin/products`, { headers: authHeaders() });
             if (res.ok) {
@@ -1249,7 +1249,7 @@ export const State = {
         return null;
     },
     // --- Store Management ---
-    async fetchStoreData() {
+    async fetchStoreData(silent = false) {
         try {
             const res = await fetch(`${API}/store`, { headers: authHeaders() });
             if (!res.ok) throw new Error('Failed to fetch store data');
@@ -1263,7 +1263,7 @@ export const State = {
         }
     },
 
-    async fetchDropshipperOrders() {
+    async fetchDropshipperOrders(silent = false) {
         try {
             // Updated to use the shared supplier/business endpoint
             const res = await fetch(`${API}/supplier/orders`, { headers: authHeaders() });
@@ -1286,7 +1286,7 @@ export const State = {
         return [];
     },
 
-    async fetchDropshipperStats() {
+    async fetchDropshipperStats(silent = false) {
         try {
             // Updated to use the shared supplier/business endpoint
             const res = await fetch(`${API}/supplier/stats`, { headers: authHeaders() });
@@ -1375,7 +1375,7 @@ export const State = {
     },
 
     // --- Financial Management ---
-    async fetchDropshipperWallet() {
+    async fetchDropshipperWallet(silent = false) {
         try {
             const res = await fetch(`${API}/finance/wallet`, { headers: authHeaders() });
             if (res.ok) {

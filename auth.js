@@ -11,6 +11,15 @@ export const Auth = {
         // No longer dependent on local users array, but we can keep this empty init if needed
     },
 
+    decodeToken: (token) => {
+        try {
+            const payload = JSON.parse(atob(token.split('.')[1]));
+            return payload;
+        } catch {
+            return null;
+        }
+    },
+
     // Login function
     login: async (email, password) => {
         try {
@@ -212,7 +221,13 @@ export const Auth = {
 
     isLoggedIn: () => {
         const session = Auth.getUserSession();
-        return !!(session && session.token);
+        if (!session || !session.token) return false;
+        
+        const payload = Auth.decodeToken(session.token);
+        if (!payload || !payload.exp) return false;
+        
+        // exp is in seconds, Date.now() is in ms
+        return (payload.exp * 1000) > Date.now();
     },
 
     logout: () => {

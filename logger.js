@@ -68,7 +68,10 @@ export const Logger = {
         // Use fetch with 'keepalive' to ensure logs are sent even during page unloads
         fetch(this._bridgeUrl, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 
+                'Content-Type': 'application/json',
+                'x-log-secret': window.LOG_SECRET || ''
+            },
             body: JSON.stringify(payload),
             keepalive: true
         }).catch(() => {

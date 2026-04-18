@@ -27,7 +27,7 @@ export const Components = {
                     ${results.map(item => `
                         <div onclick="window.handleSuggestionClick('${item.type}', '${item.id || item.slug}')" class="p-3 hover:bg-blue-50/80 cursor-pointer flex items-center gap-4 group transition-all">
                             <div class="w-10 h-10 rounded-lg overflow-hidden bg-slate-100 flex-shrink-0">
-                                <img src="${item.image || 'assets/placeholder.png'}" class="w-full h-full object-cover group-hover:scale-110 transition-transform" onerror="this.src='https://ui-avatars.com/api/?name=${item.name}&background=random'">
+                                <img loading="lazy" src="${item.image || 'assets/placeholder.png'}" class="w-full h-full object-cover group-hover:scale-110 transition-transform" onerror="this.src='https://ui-avatars.com/api/?name=${item.name}&background=random'">
                             </div>
                             <div class="flex-1 min-w-0">
                                 <h4 class="text-sm font-bold text-slate-800 truncate">${item.name.replace(new RegExp(query, 'gi'), match => `<span class="text-blue-600 underline">${match}</span>`)}</h4>
@@ -278,7 +278,7 @@ export const Components = {
         return `
             <div class="glass-card p-6 rounded-2xl hover:shadow-xl transition-all cursor-pointer" onclick="Router.navigate('/supplier/${supplier.id}')">
                 <div class="flex items-start gap-4">
-                    <img src="${supplier.logo}" alt="${supplier.name}" class="w-16 h-16 rounded-lg">
+                    <img onerror="this.src='/assets/placeholder.png'; this.onerror=null;" loading="lazy" src="${supplier.logo}" alt="${supplier.name}" class="w-16 h-16 rounded-lg">
                     <div class="flex-1">
                         <div class="flex items-start justify-between">
                             <div>
@@ -376,7 +376,7 @@ export const Components = {
         return `
             <div id="full-page-loader" class="fixed inset-0 bg-slate-50/90 backdrop-blur-sm z-[5000] flex flex-col items-center justify-center transition-opacity duration-500">
                 <div class="relative w-32 h-32 mb-8 animate-pulse-glow rounded-full flex items-center justify-center bg-white shadow-xl border border-slate-100">
-                    <img src="assets/logo.png" alt="Xperiencestore Logo" class="w-16 h-16 object-contain glass-shine-effect">
+                    <img loading="lazy" src="assets/logo.png" alt="Xperiencestore Logo" class="w-16 h-16 object-contain glass-shine-effect">
                 </div>
                 <h2 class="text-2xl font-bold text-slate-800 tracking-tight">${message}</h2>
                 <div class="mt-6 flex gap-2">
@@ -403,7 +403,7 @@ export const Components = {
                 <!-- Central Logo Focal Point -->
                 <div class="flex flex-col items-center justify-center py-20">
                     <div class="relative w-48 h-48 mb-6 opacity-40 grayscale-0 shadow-2xl rounded-full bg-white flex items-center justify-center p-8">
-                        <img src="assets/logo.png" alt="Logo Placeholder" class="w-full h-full object-contain animate-pulse">
+                        <img loading="lazy" src="assets/logo.png" alt="Logo Placeholder" class="w-full h-full object-contain animate-pulse">
                     </div>
                     <div class="w-64 h-4 bg-slate-200 rounded-full"></div>
                 </div>

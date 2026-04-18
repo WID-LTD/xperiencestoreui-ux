@@ -240,7 +240,7 @@ export const Pages = {
                             <div class="space-y-4">
                                 ${order.items.map(item => `
                                     <div class="flex items-center gap-4">
-                                        <img src="${State.getMediaUrl(item.product_id, 0)}" class="w-16 h-16 rounded-lg object-cover">
+                                        <img onerror="this.src='/assets/placeholder.png'; this.onerror=null;" loading="lazy" src="${State.getMediaUrl(item.product_id, 0)}" class="w-16 h-16 rounded-lg object-cover">
                                         <div class="flex-1">
                                             <p class="font-bold">${item.name || 'Product Details'}</p>
                                             <p class="text-xs text-slate-500">Qty: ${item.quantity} × ${State.formatCurrency(item.price)}</p>
@@ -508,7 +508,7 @@ export const Pages = {
             <div class="flex items-center justify-center min-h-[70vh] px-4 py-8">
                 <div class="glass-card p-6 md:p-8 rounded-3xl w-full max-w-md border border-white mx-auto">
                     <div class="text-center mb-8">
-                        <img src="assets/logo.png" class="h-12 mx-auto mb-4">
+                        <img loading="lazy" src="assets/logo.png" class="h-12 mx-auto mb-4">
                         <h2 class="text-2xl font-bold text-slate-800">Welcome Back</h2>
                         <p class="text-slate-500 text-sm">Login to access your account</p>
                     </div>
@@ -591,7 +591,7 @@ export const Pages = {
             <div class="flex items-center justify-center min-h-[70vh] py-10 px-4">
                 <div class="glass-card p-6 md:p-8 rounded-3xl w-full max-w-2xl border border-white mx-auto">
                     <div class="text-center mb-8">
-                        <img src="assets/logo.png" class="h-12 mx-auto mb-4">
+                        <img loading="lazy" src="assets/logo.png" class="h-12 mx-auto mb-4">
                         <h2 class="text-2xl font-bold text-slate-800">Create Account</h2>
                         <p class="text-slate-500 text-sm">Join Xperiencestore today</p>
                     </div>
@@ -1141,7 +1141,7 @@ export const Pages = {
                                 <button onclick="Router.navigate('/categories')" class="border-2 border-white px-8 py-3 rounded-full font-bold hover:bg-white/10 transition-all">Browse Categories</button>
                             </div>
                         </div>
-                        <img src="https://images.unsplash.com/photo-1607082348824-0a96f2a4b9da?w=400" class="h-48 md:h-64 rounded-2xl shadow-2xl transform hover:rotate-2 transition-all duration-500">
+                        <img loading="lazy" src="https://images.unsplash.com/photo-1607082348824-0a96f2a4b9da?w=400" class="h-48 md:h-64 rounded-2xl shadow-2xl transform hover:rotate-2 transition-all duration-500">
                     </div>
 
                     <!-- Sponsored Deals (Only for non-admin/warehouse) -->
@@ -1394,12 +1394,12 @@ export const Pages = {
                         <!-- Product Images -->
                         <div class="space-y-4">
                             <div class="glass-card rounded-[2rem] overflow-hidden h-72 sm:h-96 lg:h-[500px] relative flex items-center justify-center bg-gray-100">
-                                <img id="mainImage" src="${State.getMediaUrl(product.id, 0)}" onerror="console.error('Failed to load main product image:', this.src); this.src='https://via.placeholder.com/600?text=No+Image'" class="w-full h-full object-cover transform hover:scale-105 transition-all duration-500 relative z-10">
+                                <img loading="lazy" id="mainImage" src="${State.getMediaUrl(product.id, 0)}" onerror="console.error('Failed to load main product image:', this.src); this.src='https://via.placeholder.com/600?text=No+Image'" class="w-full h-full object-cover transform hover:scale-105 transition-all duration-500 relative z-10">
                             </div>
                             <div class="grid grid-cols-4 gap-2 sm:gap-4">
                                 ${galleryIndices.map(index => `
                                     <div onclick="const main = document.getElementById('mainImage'); main.src='${State.getMediaUrl(product.id, index)}';" class="glass-card rounded-xl h-16 sm:h-24 overflow-hidden cursor-pointer border-2 ${index === 0 ? 'border-blue-600' : 'border-transparent'} hover:border-blue-400 transition-all relative">
-                                        <img src="${State.getMediaUrl(product.id, index)}" onerror="this.parentElement.style.display='none'" class="w-full h-full object-cover">
+                                        <img loading="lazy" src="${State.getMediaUrl(product.id, index)}" onerror="this.parentElement.style.display='none'" class="w-full h-full object-cover">
                                     </div>
                                 `).join('')}
                             </div>
@@ -1534,7 +1534,7 @@ export const Pages = {
                                     container.innerHTML = videos.slice(0, 4).map(video => \`
                                         <div class="glass-card rounded-2xl overflow-hidden group">
                                             <div class="relative aspect-video">
-                                                <img src="\${video.thumbnail}" class="w-full h-full object-cover">
+                                                <img loading="lazy" src="\${video.thumbnail}" class="w-full h-full object-cover">
                                                 <div class="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                                                     <a href="https://youtube.com/watch?v=\${video.id}" target="_blank" class="w-12 h-12 bg-red-600 rounded-full flex items-center justify-center shadow-xl shadow-red-600/40">
                                                         <i data-lucide="play" class="w-6 h-6 text-white fill-white"></i>
@@ -1608,7 +1608,7 @@ export const Pages = {
         renderCartItems(cart) {
             return cart.map(item => `
                 <div class="glass-card p-4 sm:p-6 rounded-2xl flex flex-col sm:flex-row gap-4 sm:gap-6 items-center sm:items-start text-center sm:text-left transition-all hover:shadow-md" id="cart-item-${item.id}">
-                    <img src="${State.getMediaUrl(item.id, 0)}" onerror="this.src='https://via.placeholder.com/150?text=No+Image'" alt="${item.name}" class="w-full sm:w-24 h-48 sm:h-24 object-cover rounded-xl shadow-sm">
+                    <img loading="lazy" src="${State.getMediaUrl(item.id, 0)}" onerror="this.src='https://via.placeholder.com/150?text=No+Image'" alt="${item.name}" class="w-full sm:w-24 h-48 sm:h-24 object-cover rounded-xl shadow-sm">
                     <div class="flex-1 w-full">
                         <h3 class="font-bold mb-1 text-slate-800 text-lg sm:text-base">${item.name}</h3>
                         <p class="text-sm text-slate-500 mb-3">${item.category}</p>
@@ -1869,7 +1869,7 @@ export const Pages = {
                                 <div class="space-y-3 mb-4 max-h-64 overflow-y-auto">
                                     ${cart.map(item => `
                                         <div class="flex gap-3">
-                                            <img src="${State.getMediaUrl(item.id, 0)}" onerror="this.src='https://via.placeholder.com/150?text=No+Image'" class="w-16 h-16 rounded-lg object-cover">
+                                            <img loading="lazy" src="${State.getMediaUrl(item.id, 0)}" onerror="this.src='https://via.placeholder.com/150?text=No+Image'" class="w-16 h-16 rounded-lg object-cover">
                                             <div class="flex-1">
                                                 <p class="font-bold text-sm">${item.name}</p>
                                                 <p class="text-xs text-slate-400">Qty: ${item.quantity}</p>
@@ -2614,7 +2614,7 @@ export const Pages = {
                         <div class="md:col-span-1 space-y-6">
                             <div class="glass-card p-6 rounded-2xl text-center">
                                 <div class="w-24 h-24 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4 overflow-hidden relative group">
-                                    <img id="profile-img-preview" src="${user.profile_image || 'assets/default-avatar.png'}" class="w-full h-full object-cover" onerror="this.src='https://ui-avatars.com/api/?name=${user.name}'">
+                                    <img loading="lazy" id="profile-img-preview" src="${user.profile_image || 'assets/default-avatar.png'}" class="w-full h-full object-cover" onerror="this.src='https://ui-avatars.com/api/?name=${user.name}'">
                                     <div class="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer" onclick="document.getElementById('p-image').click()">
                                         <i data-lucide="camera" class="w-6 h-6 text-white"></i>
                                     </div>
@@ -2827,7 +2827,7 @@ export const Pages = {
                     <!-- Supplier Header -->
                     <div class="glass-card p-8 rounded-2xl mb-8">
                         <div class="flex flex-col md:flex-row gap-6 items-start">
-                            <img src="${supplier.logo}" alt="${supplier.name}" class="w-24 h-24 rounded-xl shadow-lg">
+                            <img onerror="this.src='/assets/placeholder.png'; this.onerror=null;" loading="lazy" src="${supplier.logo}" alt="${supplier.name}" class="w-24 h-24 rounded-xl shadow-lg">
                             <div class="flex-1">
                                 <div class="flex items-center gap-3 mb-2">
                                     <h1 class="text-3xl font-bold">${supplier.name}</h1>
@@ -3179,7 +3179,7 @@ export const Pages = {
                                 <button onclick="Router.navigate('/business/rfq/create')" class="border-2 border-white px-8 py-3 rounded-full font-bold hover:bg-white/10 transition-all">Create RFQ</button>
                             </div>
                         </div>
-                        <img src="https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?w=400" class="h-48 md:h-64 rounded-2xl shadow-2xl transform hover:-rotate-2 transition-all duration-500">
+                        <img loading="lazy" src="https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?w=400" class="h-48 md:h-64 rounded-2xl shadow-2xl transform hover:-rotate-2 transition-all duration-500">
                     </div>
 
                     <!-- Quick Stats -->
@@ -3780,7 +3780,7 @@ export const Pages = {
                                 <button onclick="Router.navigate('/dropshipper/catalog')" class="border-2 border-white px-6 py-3 rounded-full font-bold hover:bg-white/10 transition-all">Source Products</button>
                             </div>
                         </div>
-                        <img src="https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?w=400" class="h-64 rounded-2xl shadow-2xl">
+                        <img loading="lazy" src="https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?w=400" class="h-64 rounded-2xl shadow-2xl">
                     </div>
 
                     <!-- Quick Stats -->
@@ -3829,7 +3829,7 @@ export const Pages = {
                             <div class="space-y-3">
                                 ${products.slice(0, 4).map((product, i) => `
                                     <div class="flex items-center gap-4 p-2 hover:bg-slate-50 rounded-xl transition-all">
-                                        <img src="${State.getMediaUrl(product.id, 0)}" onerror="this.src='https://via.placeholder.com/150?text=No+Image'" class="w-12 h-12 rounded-lg object-cover shadow-sm">
+                                        <img loading="lazy" src="${State.getMediaUrl(product.id, 0)}" onerror="this.src='https://via.placeholder.com/150?text=No+Image'" class="w-12 h-12 rounded-lg object-cover shadow-sm">
                                         <div class="flex-1">
                                             <p class="font-bold text-sm line-clamp-1">${product.name}</p>
                                             <p class="text-[10px] text-slate-400 uppercase font-bold tracking-wider">${product.category}</p>
@@ -4014,7 +4014,7 @@ export const Pages = {
                         ${storeProducts.map(product => `
                             <div class="glass-card rounded-2xl overflow-hidden group">
                                 <div class="relative">
-                                    <img src="${State.getMediaUrl(product.id, 0)}" onerror="this.src='https://via.placeholder.com/300?text=No+Image'" alt="${product.name}" class="h-48 w-full object-cover">
+                                    <img loading="lazy" src="${State.getMediaUrl(product.id, 0)}" onerror="this.src='https://via.placeholder.com/300?text=No+Image'" alt="${product.name}" class="h-48 w-full object-cover">
                                     <div class="absolute top-2 right-2 flex gap-2">
                                         <button class="bg-white p-2 rounded-lg shadow hover:bg-red-50 transition-all">
                                             <i data-lucide="trash-2" class="w-4 h-4 text-red-600"></i>
@@ -4188,7 +4188,7 @@ export const Pages = {
 
                 return `
                                         <div class="glass-card rounded-2xl overflow-hidden">
-                                            <img src="${State.getMediaUrl(product.id, 0)}" onerror="this.src='https://via.placeholder.com/300?text=No+Image'" alt="${product.name}" class="h-48 w-full object-cover">
+                                            <img loading="lazy" src="${State.getMediaUrl(product.id, 0)}" onerror="this.src='https://via.placeholder.com/300?text=No+Image'" alt="${product.name}" class="h-48 w-full object-cover">
                                             <div class="p-4">
                                                 <h3 class="font-bold mb-2 line-clamp-2">${product.name}</h3>
                                                 <div class="grid grid-cols-2 gap-3 mb-4 text-sm">
@@ -4239,7 +4239,7 @@ export const Pages = {
                     <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
                         <!-- Product Info -->
                         <div class="glass-card p-6 rounded-2xl">
-                            <img src="${State.getMediaUrl(product.id, 0)}" onerror="this.src='https://via.placeholder.com/300?text=No+Image'" class="w-full h-48 object-cover rounded-xl mb-4">
+                            <img loading="lazy" src="${State.getMediaUrl(product.id, 0)}" onerror="this.src='https://via.placeholder.com/300?text=No+Image'" class="w-full h-48 object-cover rounded-xl mb-4">
                             <h2 class="text-xl font-bold mb-2">${product.name}</h2>
                             <p class="text-sm text-slate-600 mb-4">${product.description}</p>
                             <div class="flex items-center gap-2">
@@ -4409,7 +4409,7 @@ export const Pages = {
                                 ${(State.get().dropshipperProducts || []).slice(0, 5).map((product, i) => `
                                     <div class="flex items-center gap-4 p-3 hover:bg-slate-50 rounded-xl transition-all">
                                         <span class="text-2xl font-bold text-slate-300">${i + 1}</span>
-                                        <img src="${State.getMediaUrl(product.id, 0)}" onerror="this.src='https://via.placeholder.com/150?text=No+Image'" class="w-12 h-12 rounded-lg object-cover">
+                                        <img loading="lazy" src="${State.getMediaUrl(product.id, 0)}" onerror="this.src='https://via.placeholder.com/150?text=No+Image'" class="w-12 h-12 rounded-lg object-cover">
                                         <div class="flex-1">
                                             <p class="font-bold text-sm">${product.name}</p>
                                             <p class="text-xs text-slate-500">${15 + i * 3} sales</p>
@@ -4995,7 +4995,7 @@ export const Pages = {
                                 <button onclick="Router.navigate('/warehouse/fulfillment')" class="border-2 border-white px-6 py-3 rounded-full font-bold hover:bg-white/10 transition-all">Fulfillment</button>
                             </div>
                         </div>
-                        <img src="https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?w=400" class="h-64 rounded-2xl shadow-2xl">
+                        <img loading="lazy" src="https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?w=400" class="h-64 rounded-2xl shadow-2xl">
                     </div>
 
                     <!-- Quick Stats -->
@@ -5588,7 +5588,7 @@ export const Pages = {
                                 <button onclick="Router.navigate('/supplier/orders')" class="border-2 border-white px-8 py-3 rounded-full font-bold hover:bg-white/10 transition-all">Manage Orders</button>
                             </div>
                         </div>
-                        <img src="https://images.unsplash.com/photo-1556740758-90de374c12ad?w=400" class="h-48 md:h-64 rounded-2xl shadow-2xl transform hover:rotate-2 transition-all duration-500">
+                        <img loading="lazy" src="https://images.unsplash.com/photo-1556740758-90de374c12ad?w=400" class="h-48 md:h-64 rounded-2xl shadow-2xl transform hover:rotate-2 transition-all duration-500">
                     </div>
 
                     <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
@@ -5628,7 +5628,7 @@ export const Pages = {
                             <div class="space-y-3">
                                 ${products.length > 0 ? products.map((product, i) => `
                                     <div class="flex items-center gap-4 p-2 rounded-xl hover:bg-slate-50 transition-all">
-                                        <img src="${State.getMediaUrl(product.id, 0)}" onerror="this.src='https://via.placeholder.com/150?text=No+Image'" class="w-12 h-12 rounded-lg object-cover">
+                                        <img loading="lazy" src="${State.getMediaUrl(product.id, 0)}" onerror="this.src='https://via.placeholder.com/150?text=No+Image'" class="w-12 h-12 rounded-lg object-cover">
                                         <div class="flex-1">
                                             <p class="font-bold text-sm text-slate-800">${product.name}</p>
                                             <p class="text-xs text-slate-500">${product.stock} units in stock</p>
@@ -5723,7 +5723,7 @@ export const Pages = {
                                     <tr class="hover:bg-slate-50/80 transition-colors group">
                                         <td class="p-6">
                                             <div class="flex items-center gap-4">
-                                                <img src="${State.getMediaUrl(product.id, 0)}" onerror="this.src='https://via.placeholder.com/150?text=No+Image'" class="w-12 h-12 rounded-lg object-cover shadow-sm">
+                                                <img loading="lazy" src="${State.getMediaUrl(product.id, 0)}" onerror="this.src='https://via.placeholder.com/150?text=No+Image'" class="w-12 h-12 rounded-lg object-cover shadow-sm">
                                                 <div>
                                                     <p class="font-bold text-slate-800">${product.name}</p>
                                                     <p class="text-xs text-slate-400">ID: ${product.id}</p>
@@ -5819,7 +5819,7 @@ export const Pages = {
                                     <div id="preview-gallery" class="${isEdit ? '' : 'hidden'} grid grid-cols-5 gap-2 mt-4 pointer-events-none">
                                         ${isEdit ? Array.from({ length: 5 }).map((_, i) => `
                                             <div class="aspect-square rounded-lg bg-slate-100 overflow-hidden relative group">
-                                                <img src="${State.getMediaUrl(productId, i)}" 
+                                                <img loading="lazy" src="${State.getMediaUrl(productId, i)}" 
                                                      onerror="this.parentElement.style.display='none'"
                                                      class="w-full h-full object-cover">
                                             </div>
@@ -5910,7 +5910,7 @@ export const Pages = {
                                         ${order.items.map(item => `
                                             <div class="flex justify-between items-center text-sm">
                                                 <div class="flex items-center gap-3">
-                                                    <img src="${State.getMediaUrl(item.product_id, 0)}" class="w-8 h-8 rounded object-cover">
+                                                    <img onerror="this.src='/assets/placeholder.png'; this.onerror=null;" loading="lazy" src="${State.getMediaUrl(item.product_id, 0)}" class="w-8 h-8 rounded object-cover">
                                                     <span class="font-medium text-slate-700">
                                                         <span class="w-6 text-slate-400">x${item.quantity}</span>
                                                         ${item.name}
@@ -6316,7 +6316,7 @@ export const Pages = {
                                 <button onclick="Router.navigate('/admin/reports')" class="border-2 border-white px-8 py-3 rounded-full font-bold hover:bg-white/10 transition-all">System Reports</button>
                             </div>
                         </div>
-                        <img src="https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=400" class="h-48 md:h-64 rounded-2xl shadow-2xl opacity-80 transform hover:-rotate-2 transition-all duration-500">
+                        <img loading="lazy" src="https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=400" class="h-48 md:h-64 rounded-2xl shadow-2xl opacity-80 transform hover:-rotate-2 transition-all duration-500">
                     </div>
 
                     <!-- Platform Stats -->
@@ -6755,7 +6755,7 @@ export const Pages = {
                                 ${products.length > 0 ? products.map(product => `
                                     <tr class="hover:bg-slate-50/80 transition-colors">
                                         <td class="p-6 flex items-center gap-4">
-                                            <img src="${State.getMediaUrl(product.id, 0)}" class="w-12 h-12 rounded-xl object-cover bg-slate-100" onerror="this.src='/assets/placeholder.jpg'">
+                                            <img loading="lazy" src="${State.getMediaUrl(product.id, 0)}" class="w-12 h-12 rounded-xl object-cover bg-slate-100" onerror="this.src='/assets/placeholder.jpg'">
                                             <span class="font-bold text-slate-800">${product.name}</span>
                                         </td>
                                         <td class="p-6 text-sm text-slate-600">${product.category}</td>
@@ -7685,7 +7685,7 @@ window.handleImagePreview = (input) => {
             reader.onload = (e) => {
                 gallery.insertAdjacentHTML('beforeend', `
                     <div class="aspect-square rounded-lg bg-slate-100 overflow-hidden relative group">
-                        <img src="${e.target.result}" class="w-full h-full object-cover">
+                        <img onerror="this.src='/assets/placeholder.png'; this.onerror=null;" loading="lazy" src="${e.target.result}" class="w-full h-full object-cover">
                     </div>
                 `);
             };

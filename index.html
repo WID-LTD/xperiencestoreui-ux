@@ -14,13 +14,22 @@
     <script>
       // =============================================
       // API Base Configuration
-      // PRODUCTION: 'https://xperiencestore.onrender.com'
+      // PRODUCTION: 'https://api.xperiencestore.store'
       // =============================================
       window.API_BASE = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' ? 'http://localhost:5000' : 'https://api.xperiencestore.store';
 
       // Helper: builds a full API URL from a relative path like '/api/orders'
       window.apiUrl = (path) => `${window.API_BASE}${path}`;
+      window.LOG_SECRET = 'xperience-log-secret-2026';
       console.log('XperinceStore UI v1.0.1-emergency-fix-applied');
+
+      if ('serviceWorker' in navigator) {
+          window.addEventListener('load', () => {
+              navigator.serviceWorker.register('/sw.js').catch(err => {
+                  console.warn('ServiceWorker registration failed: ', err);
+              });
+          });
+      }
     </script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script type="module" src="logger.js"></script>

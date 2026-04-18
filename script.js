@@ -42,6 +42,17 @@ async function initApp() {
 
     // Set user role from session
     const userSession = Auth.getUserSession();
+    
+    // Auto-logout if token is expired
+    if (userSession && userSession.token && !Auth.isLoggedIn()) {
+        Auth.logout();
+        Router.navigate('/login');
+        if (window.Components && window.Components.showNotification) {
+            Components.showNotification('Your session has expired. Please log in again.', 'warning');
+        }
+        return; // Stop initialization
+    }
+
     const userRole = userSession?.role || 'consumer';
     State.set({ userRole });
 
@@ -156,18 +167,18 @@ function startDashboardPolling() {
         console.log(`[POLLING] Refreshing data for ${userRole}...`);
 
         if (userRole === 'supplier') {
-            dataFetches.push(State.fetchSupplierStats());
-            dataFetches.push(State.fetchSupplierOrders());
+            dataFetches.push(State.fetchSupplierStats(true));
+            dataFetches.push(State.fetchSupplierOrders(true));
         } else if (userRole === 'warehouse') {
-            dataFetches.push(State.fetchInventory());
-            dataFetches.push(State.fetchOrders());
+            dataFetches.push(State.fetchInventory(true));
+            dataFetches.push(State.fetchOrders(true));
         } else if (userRole === 'admin') {
-            dataFetches.push(State.fetchAdminStats());
-            dataFetches.push(State.fetchAdminOrders());
+            dataFetches.push(State.fetchAdminStats(true));
+            dataFetches.push(State.fetchAdminOrders(true));
         } else if (userRole === 'dropshipper') {
-            dataFetches.push(State.fetchDropshipperStats());
-            dataFetches.push(State.fetchDropshipperOrders());
-            dataFetches.push(State.fetchDropshipperWallet());
+            dataFetches.push(State.fetchDropshipperStats(true));
+            dataFetches.push(State.fetchDropshipperOrders(true));
+            dataFetches.push(State.fetchDropshipperWallet(true));
         }
 
         // Always fetch notifications
