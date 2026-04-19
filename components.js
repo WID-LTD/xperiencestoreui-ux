@@ -3,8 +3,8 @@
  * Library of reusable components for consistent UI
  */
 
-import { State } from './state.js?v=3.1.4';
-import { Router } from './router.js?v=3.1.4';
+import { State } from './state.js?v=3.1.5';
+import { Router } from './router.js?v=3.1.5';
 
 export const Components = {
     // Search Suggestions Component (Glassmorphism)
@@ -775,6 +775,62 @@ export const Components = {
     toggleMobileMenu() {
         const menu = document.getElementById('mobile-side-menu');
         menu.classList.toggle('active');
+    },
+
+    // "More to Love" Section (Horizontal Scroll)
+    MoreToLoveSection(products) {
+        if (!products || products.length === 0) return '';
+        
+        const displayProducts = products.slice(0, 10);
+        
+        return `
+            <div class="mt-16 mb-8">
+                <div class="flex items-center justify-between mb-6">
+                    <h3 class="text-2xl font-bold text-slate-800">More to Love</h3>
+                    <a href="#/products" class="text-blue-600 font-bold hover:underline text-sm">View All</a>
+                </div>
+                <div class="relative group">
+                    <div class="flex overflow-x-auto gap-6 pb-6 no-scrollbar snap-x scroll-smooth">
+                        ${displayProducts.map(product => `
+                            <div class="min-w-[200px] sm:min-w-[240px] snap-start">
+                                ${this.ProductCard(product, { showAddToCart: false, showQuickView: true })}
+                            </div>
+                        `).join('')}
+                    </div>
+                    <!-- Navigation Hints -->
+                    <div class="absolute inset-y-0 left-0 w-12 bg-gradient-to-r from-slate-50 to-transparent pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                    <div class="absolute inset-y-0 right-0 w-12 bg-gradient-to-l from-slate-50 to-transparent pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                </div>
+            </div>
+        `;
+    },
+
+    // Random Auto-scroll Product Grid for Hero
+    RandomProductScroll(products) {
+        if (!products || products.length === 0) {
+            return `<div class="h-48 md:h-64 w-full bg-blue-100/50 rounded-2xl animate-pulse"></div>`;
+        }
+        
+        // Shuffle and take 6-8 products
+        const shuffled = [...products].sort(() => 0.5 - Math.random()).slice(0, 8);
+        
+        return `
+            <div class="relative w-full overflow-hidden rounded-2xl h-48 md:h-64 group shadow-2xl">
+                <div class="flex animate-infinite-scroll gap-4 p-2">
+                    ${shuffled.map(p => `
+                        <a href="#/product/${p.id}" class="flex-shrink-0 w-32 md:w-40 h-full">
+                            <img loading="lazy" src="${State.getMediaUrl(p.id, 0)}" class="w-full h-full object-cover rounded-xl shadow-lg border-2 border-white/20 hover:scale-105 transition-transform" onerror="this.src='/assets/placeholder.png'">
+                        </a>
+                    `).join('')}
+                    <!-- Duplicate for seamless scroll -->
+                    ${shuffled.map(p => `
+                        <a href="#/product/${p.id}" class="flex-shrink-0 w-32 md:w-40 h-full">
+                            <img loading="lazy" src="${State.getMediaUrl(p.id, 0)}" class="w-full h-full object-cover rounded-xl shadow-lg border-2 border-white/20 hover:scale-105 transition-transform" onerror="this.src='/assets/placeholder.png'">
+                        </a>
+                    `).join('')}
+                </div>
+            </div>
+        `;
     },
 
     // Toggle password visibility helper

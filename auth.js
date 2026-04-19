@@ -230,6 +230,21 @@ export const Auth = {
         return (payload.exp * 1000) > Date.now();
     },
 
+    checkExpiry: async () => {
+        const session = Auth.getUserSession();
+        if (!session || !session.token) return; // No session, nothing to check
+        
+        const payload = Auth.decodeToken(session.token);
+        if (!payload || !payload.exp) return;
+        
+        // Token expires within 60 seconds
+        const isExpired = (payload.exp * 1000) <= Date.now();
+        if (isExpired) {
+            console.warn('[Auth] Session token expired, logging out.');
+            Auth.logout();
+        }
+    },
+
     logout: () => {
         if (window.State) {
             window.State.logout();

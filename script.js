@@ -3,14 +3,14 @@
  * Wires together router, state, pages, and components
  */
 
-import { Auth } from './auth.js?v=3.1.4';
-import { Router } from './router.js?v=3.1.4';
-import { State } from './state.js?v=3.1.4';
-import { Data } from './data.js?v=3.1.4';
-import { Components } from './components.js?v=3.1.4';
-import { Pages } from './pages.js?v=3.1.4';
-import { Payment } from './payment.js?v=3.1.4';
-import { PaymentCheckoutModal } from './paymentModal.js?v=3.1.4';
+import { Auth } from './auth.js?v=3.1.5';
+import { Router } from './router.js?v=3.1.5';
+import { State } from './state.js?v=3.1.5';
+import { Data } from './data.js?v=3.1.5';
+import { Components } from './components.js?v=3.1.5';
+import { Pages } from './pages.js?v=3.1.5';
+import { Payment } from './payment.js?v=3.1.5';
+import { PaymentCheckoutModal } from './paymentModal.js?v=3.1.5';
 
 
 // Initialize application
@@ -43,7 +43,13 @@ async function initApp() {
     // Set user role from session
     const userSession = Auth.getUserSession();
     
-    // Auto-logout if token is expired
+    // Check Auth and Decouple status
+    await Auth.checkExpiry();
+
+    // Initialize Chat System
+    if (window.Chat) window.Chat.init();
+
+    // Check if user is logged in
     if (userSession && userSession.token && !Auth.isLoggedIn()) {
         Auth.logout();
         Router.navigate('/login');
@@ -610,6 +616,44 @@ function setupUserDropdown() {
     }
 }
 
+// Global role switcher handler
+window.switchUserRole = async (newRole) => {
+    const session = Auth.getUserSession();
+    if (!session) return;
+
+    try {
+        Components.showNotification('Switching context...', 'info');
+        const response = await fetch(`${window.API_BASE}/api/auth/switch-role`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${session.token}`
+            },
+            body: JSON.stringify({ newRole })
+        });
+
+        const data = await response.json();
+        if (response.ok) {
+            // Update local session
+            const updatedUser = { ...session, role: newRole };
+            localStorage.setItem('xperience_user', JSON.stringify(updatedUser));
+            
+            Components.showNotification(`Switched to ${newRole.toUpperCase()} view`, 'success');
+            
+            // Reload to apply role-specific routes and UI
+            setTimeout(() => {
+                window.location.hash = '#/';
+                window.location.reload();
+            }, 1000);
+        } else {
+            Components.showNotification(data.message || 'Failed to switch role', 'error');
+        }
+    } catch (err) {
+        console.error('Role switch error:', err);
+        Components.showNotification('Connection error during role switch', 'error');
+    }
+};
+
 function updateUserUI() {
     const session = Auth.getUserSession();
     const isLoggedIn = session && session.email;
@@ -631,6 +675,12 @@ function updateUserUI() {
         if (isLoggedIn) {
             dropdownGuest.classList.add('hidden');
             dropdownUser.classList.remove('hidden');
+            
+            // Sync role switcher
+            const roleSwitcher = document.getElementById('role-switcher');
+            if (roleSwitcher) {
+                roleSwitcher.value = session.role || 'consumer';
+            }
         } else {
             dropdownGuest.classList.remove('hidden');
             dropdownUser.classList.add('hidden');

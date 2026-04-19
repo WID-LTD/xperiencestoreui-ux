@@ -3,12 +3,12 @@
  * Centralized page rendering for all user types
  */
 
-import { Data } from './data.js?v=3.1.4';
-import { State } from './state.js?v=3.1.4';
-import { Router } from './router.js?v=3.1.4';
-import { Components } from './components.js?v=3.1.4';
-import { Tracking } from './tracking.js?v=3.1.4';
-import { Auth } from './auth.js?v=3.1.4';
+import { Data } from './data.js?v=3.1.5';
+import { State } from './state.js?v=3.1.5';
+import { Router } from './router.js?v=3.1.5';
+import { Components } from './components.js?v=3.1.5';
+import { Tracking } from './tracking.js?v=3.1.5';
+import { Auth } from './auth.js?v=3.1.5';
 
 
 export const Pages = {
@@ -1141,7 +1141,9 @@ export const Pages = {
                                 <button onclick="Router.navigate('/categories')" class="border-2 border-white px-8 py-3 rounded-full font-bold hover:bg-white/10 transition-all">Browse Categories</button>
                             </div>
                         </div>
-                        <img loading="lazy" src="https://images.unsplash.com/photo-1607082348824-0a96f2a4b9da?w=400" class="h-48 md:h-64 rounded-2xl shadow-2xl transform hover:rotate-2 transition-all duration-500">
+                        <div class="w-full md:w-1/2">
+                            ${Components.RandomProductScroll(State.get().products || [])}
+                        </div>
                     </div>
 
                     <!-- Sponsored Deals (Only for non-admin/warehouse) -->
@@ -1198,27 +1200,27 @@ export const Pages = {
                     ` : ''}
 
                     <!-- Features -->
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 pt-6">
-                        <div class="glass-card p-6 rounded-2xl text-center hover:scale-105 transition-all">
-                            <div class="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                                <i data-lucide="truck" class="w-8 h-8 text-green-600"></i>
+                    <div class="flex overflow-x-auto md:grid md:grid-cols-3 gap-6 pt-6 no-scrollbar pb-4 -mx-4 px-4 sm:mx-0 sm:px-0">
+                        <div class="glass-card p-6 rounded-2xl text-center hover:scale-105 transition-all min-w-[200px] flex-1">
+                            <div class="w-12 h-12 md:w-16 md:h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                                <i data-lucide="truck" class="w-6 h-6 md:w-8 md:h-8 text-green-600"></i>
                             </div>
-                            <h3 class="font-bold mb-2">Free Shipping</h3>
-                            <p class="text-sm text-slate-500">On orders over ₦50,000</p>
+                            <h3 class="font-bold mb-1 text-sm md:text-base">Free Shipping</h3>
+                            <p class="text-[10px] md:text-sm text-slate-500">On orders over ₦50,000</p>
                         </div>
-                        <div class="glass-card p-6 rounded-2xl text-center hover:scale-105 transition-all">
-                            <div class="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                                <i data-lucide="shield-check" class="w-8 h-8 text-blue-600"></i>
+                        <div class="glass-card p-6 rounded-2xl text-center hover:scale-105 transition-all min-w-[200px] flex-1">
+                            <div class="w-12 h-12 md:w-16 md:h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                                <i data-lucide="shield-check" class="w-6 h-6 md:w-8 md:h-8 text-blue-600"></i>
                             </div>
-                            <h3 class="font-bold mb-2">Secure Payment</h3>
-                            <p class="text-sm text-slate-500">100% secure transactions</p>
+                            <h3 class="font-bold mb-1 text-sm md:text-base">Secure Payment</h3>
+                            <p class="text-[10px] md:text-sm text-slate-500">100% secure transactions</p>
                         </div>
-                        <div class="glass-card p-6 rounded-2xl text-center hover:scale-105 transition-all">
-                            <div class="w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                                <i data-lucide="headphones" class="w-8 h-8 text-orange-600"></i>
+                        <div class="glass-card p-6 rounded-2xl text-center hover:scale-105 transition-all min-w-[200px] flex-1">
+                            <div class="w-12 h-12 md:w-16 md:h-16 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                                <i data-lucide="headphones" class="w-6 h-6 md:w-8 md:h-8 text-orange-600"></i>
                             </div>
-                            <h3 class="font-bold mb-2">24/7 Support</h3>
-                            <p class="text-sm text-slate-500">Always here to help</p>
+                            <h3 class="font-bold mb-1 text-sm md:text-base">24/7 Support</h3>
+                            <p class="text-[10px] md:text-sm text-slate-500">Always here to help</p>
                         </div>
                     </div>
                 </div>
@@ -1601,6 +1603,9 @@ export const Pages = {
                             ${this.renderCartSummary(total)}
                         </div>
                     </div>
+                    
+                    <!-- Recommendations Section -->
+                    ${Components.MoreToLoveSection(State.get().recommendedProducts || [])}
                 </div>
             `;
         },
@@ -2321,6 +2326,9 @@ export const Pages = {
                             ${wishlist.map(product => Components.ProductCard(product)).join('')}
                         </div>
                     ` : Components.EmptyState('heart', 'Your Wishlist is Empty', 'Save products you love for later', '<button onclick="Router.navigate(\'/products\')" class="bg-blue-600 text-white px-6 py-3 rounded-xl font-bold">Browse Products</button>'))}
+
+                    <!-- Recommendations Section -->
+                    ${Components.MoreToLoveSection(State.get().recommendedProducts || [])}
                 </div>
             `;
         },

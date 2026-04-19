@@ -183,8 +183,8 @@ export const State = {
     },
 
     // Fetch products from API with optional filters
-    async fetchProducts(filters = {}) {
-        if (typeof silent !== 'undefined' ? !silent : true) this._state.loading = true;
+    async fetchProducts(filters = {}, silent = false) {
+        if (!silent) this._state.loading = true;
         try {
             const params = new URLSearchParams(filters);
             const response = await fetch(window.apiUrl(`/api/products?${params}`));
@@ -211,7 +211,7 @@ export const State = {
             if (filters.limit && !filters.category && !filters.search) this._state.fetchedRecommended = true;
             if (!Object.keys(filters).length) this._state.fetchedProducts = true;
             
-            if (typeof silent !== 'undefined' ? !silent : true) this._state.loading = false;
+            if (!silent) this._state.loading = false;
             this._persistNonSensitive();
         }
         return this._state.products;
@@ -307,10 +307,9 @@ export const State = {
     },
 
     // Load cart from DB and update local cache
-    async _loadCartFromDB() {
+    async _loadCartFromDB(silent = false) {
         this._state.fetchingCart = true;
-        // Set global loading only if on cart page to show skeleton
-        if (window.Router?.getCurrentRoute()?.path === '/cart') if (typeof silent !== 'undefined' ? !silent : true) this._state.loading = true;
+        if (window.Router?.getCurrentRoute()?.path === '/cart') if (!silent) this._state.loading = true;
         try {
             const data = await _dbCartOp('GET', '');
             this._state.cart = data.items || [];
@@ -319,14 +318,14 @@ export const State = {
             console.warn('Could not load cart from DB:', err.message);
         } finally {
             this._state.fetchingCart = false;
-            if (typeof silent !== 'undefined' ? !silent : true) this._state.loading = false;
+            if (!silent) this._state.loading = false;
         }
     },
 
     // Load wishlist from DB and update local cache
-    async _loadWishlistFromDB() {
+    async _loadWishlistFromDB(silent = false) {
         this._state.fetchingWishlist = true;
-        if (window.Router?.getCurrentRoute()?.path === '/wishlist') if (typeof silent !== 'undefined' ? !silent : true) this._state.loading = true;
+        if (window.Router?.getCurrentRoute()?.path === '/wishlist') if (!silent) this._state.loading = true;
         try {
             const data = await _dbWishlistOp('GET', '');
             this._state.wishlist = data.items || [];
@@ -335,7 +334,7 @@ export const State = {
             console.warn('Could not load wishlist from DB:', err.message);
         } finally {
             this._state.fetchingWishlist = false;
-            if (typeof silent !== 'undefined' ? !silent : true) this._state.loading = false;
+            if (!silent) this._state.loading = false;
         }
     },
 
@@ -719,7 +718,7 @@ export const State = {
     // ===========================================================
 
     async fetchSupplierStats(silent = false) {
-        if (!silent) if (typeof silent !== 'undefined' ? !silent : true) this._state.loading = true;
+        if (!silent) this._state.loading = true;
         try {
             const res = await fetch(`${API}/supplier/stats`, { headers: authHeaders() });
             if (res.ok) {
@@ -730,13 +729,13 @@ export const State = {
         } catch (err) {
             console.error('Fetch supplier stats error:', err);
         } finally {
-            if (!silent) if (typeof silent !== 'undefined' ? !silent : true) this._state.loading = false;
+            if (!silent) this._state.loading = false;
         }
         return null;
     },
 
     async fetchSupplierOrders(silent = false) {
-        if (!silent) if (typeof silent !== 'undefined' ? !silent : true) this._state.loading = true;
+        if (!silent) this._state.loading = true;
         try {
             const res = await fetch(`${API}/supplier/orders`, { headers: authHeaders() });
             if (res.ok) {
@@ -747,13 +746,13 @@ export const State = {
         } catch (err) {
             console.error('Fetch supplier orders error:', err);
         } finally {
-            if (!silent) if (typeof silent !== 'undefined' ? !silent : true) this._state.loading = false;
+            if (!silent) this._state.loading = false;
         }
         return [];
     },
 
     async fetchSupplierProducts(silent = false) {
-        if (!silent) if (typeof silent !== 'undefined' ? !silent : true) this._state.loading = true;
+        if (!silent) this._state.loading = true;
         try {
             const res = await fetch(`${API}/supplier/products`, { headers: authHeaders() });
             if (res.ok) {
@@ -764,7 +763,7 @@ export const State = {
         } catch (err) {
             console.error('Fetch supplier products error:', err);
         } finally {
-            if (!silent) if (typeof silent !== 'undefined' ? !silent : true) this._state.loading = false;
+            if (!silent) this._state.loading = false;
         }
         return [];
     },

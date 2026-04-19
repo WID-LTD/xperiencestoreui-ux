@@ -105,6 +105,20 @@ body {
 }
 
 /* --- Animations --- */
+@keyframes infinite-scroll {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+.animate-infinite-scroll {
+  animation: infinite-scroll 20s linear infinite;
+  width: max-content;
+}
+
 @keyframes fadeIn {
   from {
     opacity: 0;
@@ -476,4 +490,13 @@ table {
 /* --- Max-width containers — prevent blowout --- */
 .max-w-7xl, .max-w-6xl, .max-w-5xl, .max-w-4xl, .max-w-3xl, .max-w-2xl, .max-w-xl, .max-w-lg, .max-w-md {
     width: 100%;
+}
+
+/* --- Hide scrollbar utility (for horizontal scroll containers) --- */
+.no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+    display: none;
 }

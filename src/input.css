@@ -1,0 +1,7 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Add existing custom styles here if needed, or keep them in styles.css */
+@import '../styles.css';
+@import '../chat.css';
