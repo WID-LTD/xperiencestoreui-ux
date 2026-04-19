@@ -1,1 +1,17 @@
-{ "name": "xperiencestoreui-ux", "version": "1.0.0", "description": "Xperiencestore UI/UX Frontend with Tailwind CSS", "scripts": { "build:css": "tailwindcss build src/input.css -o dist/output.css", "watch:css": "tailwindcss build src/input.css -o dist/output.css --watch" }, "keywords": [], "author": "WID-LTD", "license": "ISC", "devDependencies": { "tailwindcss": "^3.0.0", "postcss": "^8.0.0", "autoprefixer": "^10.0.0" } }
+{
+  "name": "xperiencestoreui-ux",
+  "version": "1.0.0",
+  "description": "Xperiencestore UI/UX Frontend with Tailwind CSS",
+  "scripts": {
+    "build:css": "tailwindcss -i ./src/input.css -o ./dist/output.css",
+    "watch:css": "tailwindcss -i ./src/input.css -o ./dist/output.css --watch"
+  },
+  "keywords": [],
+  "author": "WID-LTD",
+  "license": "ISC",
+  "devDependencies": {
+    "tailwindcss": "^3.0.0",
+    "postcss": "^8.0.0",
+    "autoprefixer": "^10.0.0"
+  }
+}
