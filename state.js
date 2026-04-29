@@ -182,44 +182,118 @@ export const State = {
         document.cookie = "xperince_user=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
     },
 
-    // Fetch products from API with optional filters
+    // Fetch products from API with optional filters — handles paginated response
     async fetchProducts(filters = {}, silent = false) {
         if (!silent) this._state.loading = true;
         try {
             const params = new URLSearchParams(filters);
             const response = await fetch(window.apiUrl(`/api/products?${params}`));
             if (response.ok) {
-                const products = await response.json();
-                
-                // Update specific product slices
+                const data = await response.json();
+                // Support both legacy array responses and new paginated {products, total} shape
+                const products = Array.isArray(data) ? data : (data.products || []);
+                const meta = Array.isArray(data) ? null : data;
+
+                // Sponsored fetch — store separately
                 if (filters.sponsored) {
                     this._state.sponsoredProducts = products;
-                } else if (filters.limit && !filters.category && !filters.search) {
-                    this._state.recommendedProducts = products;
                 }
-                
-                if (!filters.sponsored && !filters.category && !filters.limit) {
+                // Any other general fetch — populate main products + pagination meta
+                else {
                     this._state.products = products;
+                    if (meta) {
+                        this._state.productsMeta = {
+                            total: meta.total,
+                            page: meta.page,
+                            pageSize: meta.pageSize,
+                            totalPages: meta.totalPages
+                        };
+                    }
                 }
             }
         } catch (error) {
             console.error('Failed to fetch products:', error);
         } finally {
-            // Always set fetched flags to true if these filters were used, 
-            // even on error, to prevent infinite retry loops in UI
             if (filters.sponsored) this._state.fetchedSponsored = true;
-            if (filters.limit && !filters.category && !filters.search) this._state.fetchedRecommended = true;
-            if (!Object.keys(filters).length) this._state.fetchedProducts = true;
-            
+            if (!filters.sponsored) this._state.fetchedProducts = true;
             if (!silent) this._state.loading = false;
             this._persistNonSensitive();
         }
         return this._state.products;
     },
 
+    // Fetch a specific page of products for the products/category page
+    async fetchProductPage(filters = {}) {
+        this._state.categoryLoading = true;
+        try {
+            const params = new URLSearchParams({ limit: 100, ...filters });
+            const response = await fetch(window.apiUrl(`/api/products?${params}`));
+            if (response.ok) {
+                const data = await response.json();
+                const products = Array.isArray(data) ? data : (data.products || []);
+                const meta = Array.isArray(data) ? null : data;
+                this._state.categoryProducts = products;
+                if (meta) {
+                    this._state.categoryMeta = {
+                        total: meta.total,
+                        page: meta.page,
+                        pageSize: meta.pageSize,
+                        totalPages: meta.totalPages
+                    };
+                }
+                return { products, meta };
+            }
+        } catch (error) {
+            console.error('Failed to fetch product page:', error);
+        } finally {
+            this._state.categoryLoading = false;
+        }
+        return { products: [], meta: null };
+    },
+
     async fetchRecommendations() {
-        // Basic recommendation: just get 4 interesting products
-        return this.fetchProducts({ limit: 4 });
+        const viewedIds = this.getRecentViews();
+        console.log(`[STATE] Fetching recommendations based on recent views:`, viewedIds);
+        
+        // If we have recent views, fetch products from those categories or similar
+        // For now, let's just fetch with a limit and we'll refine sorting if needed
+        return this.fetchProducts({ limit: 8, recent: viewedIds.join(',') });
+    },
+
+    getRecentViews() {
+        const cookie = document.cookie.split('; ').find(row => row.startsWith('recent_views='));
+        if (!cookie) return [];
+        return cookie.split('=')[1].split(',').filter(Boolean);
+    },
+
+    trackProductView(productId) {
+        let viewedIds = this.getRecentViews();
+        // Remove if exists and add to front
+        viewedIds = viewedIds.filter(id => id !== productId.toString());
+        viewedIds.unshift(productId.toString());
+        // Keep only last 10
+        viewedIds = viewedIds.slice(0, 10);
+        
+        const expires = new Date();
+        expires.setTime(expires.getTime() + (30 * 24 * 60 * 60 * 1000)); // 30 days
+        document.cookie = `recent_views=${viewedIds.join(',')};expires=${expires.toUTCString()};path=/`;
+        
+        console.log(`[STATE] Tracked view for product ${productId}. History:`, viewedIds);
+    },
+
+    async fetchStats() {
+        try {
+            const res = await fetch(`${API}/products/stats`);
+            if (res.ok) {
+                const stats = await res.json();
+                this._state.productStats = stats;
+                this._persistNonSensitive();
+                return stats;
+            }
+        } catch (err) {
+            console.error('Fetch stats error:', err);
+        }
+        return null;
     },
 
     // Fetch notifications for the current user
@@ -1104,6 +1178,26 @@ export const State = {
             }
         } catch (err) {
             this.notify('Failed to update user', 'error');
+        }
+        return false;
+    },
+
+    async deleteAdminUser(userId) {
+        if (!confirm('Are you sure you want to delete this user? This action cannot be undone.')) return false;
+        try {
+            const res = await fetch(`${API}/admin/users/${userId}`, {
+                method: 'DELETE',
+                headers: authHeaders()
+            });
+            if (res.ok) {
+                this.notify('User deleted successfully', 'success');
+                return true;
+            } else {
+                const data = await res.json();
+                this.notify(data.message || 'Delete failed', 'error');
+            }
+        } catch (err) {
+            this.notify('Network error deleting user', 'error');
         }
         return false;
     },

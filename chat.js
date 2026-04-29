@@ -101,21 +101,19 @@ const Chat = {
         
         const headerIcon = document.getElementById('header-chat-icon');
         if (headerIcon) {
-            headerIcon.classList.toggle('hidden', !['admin', 'supplier', 'warehouse'].includes(role));
+            headerIcon.classList.remove('hidden');
         }
 
-        if (['consumer', 'dropshipper'].includes(role)) {
-            const existing = document.getElementById('gigo-chat-trigger');
-            if (existing) existing.remove();
+        const existing = document.getElementById('gigo-chat-trigger');
+        if (existing) existing.remove();
 
-            const btn = document.createElement('div');
-            btn.id = 'gigo-chat-trigger';
-            btn.className = 'fixed bottom-32 right-6 w-14 h-14 bg-[#25d366] rounded-full shadow-2xl flex items-center justify-center cursor-pointer z-50 hover:scale-110 transition-transform';
-            btn.innerHTML = `<i data-lucide="message-circle" class="text-white w-7 h-7"></i>`;
-            btn.onclick = () => this.toggleChat();
-            document.body.appendChild(btn);
-            lucide.createIcons();
-        }
+        const btn = document.createElement('div');
+        btn.id = 'gigo-chat-trigger';
+        btn.className = 'fixed bottom-32 right-6 w-14 h-14 bg-[#25d366] rounded-full shadow-2xl flex items-center justify-center cursor-pointer z-50 hover:scale-110 transition-transform';
+        btn.innerHTML = `<i data-lucide="message-circle" class="text-white w-7 h-7"></i>`;
+        btn.onclick = () => this.toggleChat();
+        document.body.appendChild(btn);
+        lucide.createIcons();
     },
 
     toggleChat() {

@@ -1051,6 +1051,12 @@ export const Pages = {
     consumer: {
         categories() {
             const categories = State.getCategories();
+            const { fetchedProducts, loading: isLoading } = State.get();
+
+            // Trigger product fetch if data not yet loaded
+            if (!fetchedProducts && !isLoading) {
+                State.fetchProducts({ limit: 50 }).then(() => Router.refresh());
+            }
             
             return `
                 <div class="px-4 sm:px-0">
@@ -1098,11 +1104,11 @@ export const Pages = {
 
         home() {
             const { fetchedProducts, fetchedSponsored, fetchedRecommended, loading: isLoading } = State.get();
-            const products = State.getProducts().slice(0, 8);
+            const products = State.getProducts().slice(0, 6); // Limit arrivals
 
             // Re-render when data is ready
             if (!fetchedProducts && !isLoading) {
-                State.fetchProducts().then(() => Router.refresh());
+                State.fetchProducts({ limit: 6 }).then(() => Router.refresh());
             }
 
             // Fetch extra data for sponsored and recommendations
@@ -1110,14 +1116,15 @@ export const Pages = {
             const recommended = State.get().recommendedProducts || [];
 
             if (!fetchedSponsored && !isLoading) {
-                State.fetchProducts({ sponsored: true, limit: 4 }).then(data => {
+                State.fetchProducts({ sponsored: true, limit: 8 }).then(data => {
                     State.set({ sponsoredProducts: data, fetchedSponsored: true });
                     Router.refresh();
                 });
             }
             if (!fetchedRecommended && !isLoading) {
                 State.fetchRecommendations().then(data => {
-                    State.set({ recommendedProducts: data, fetchedRecommended: true });
+                    // Filter to max 6 recommended
+                    State.set({ recommendedProducts: data.slice(0, 6), fetchedRecommended: true });
                     Router.refresh();
                 });
             }
@@ -1228,55 +1235,161 @@ export const Pages = {
         },
 
         products(params = {}) {
-            const isLoading = State.isLoading();
-            const { category, search, page = 1 } = params;
-            // Get products from state
-            let products = State.getProducts();
+            const { categoryLoading, fetchedProducts, categoryProducts, categoryMeta } = State.get();
 
-            // Get unique categories from products
-            const categories = [...new Set(products.map(p => p.category))].map(c => ({
+            const { category, search, page = 1, minPrice, maxPrice, rating } = params;
+            const currentPage = parseInt(page) || 1;
+
+            // ---- Derive category list from main products (fast, already cached) ----
+            const allProducts = State.getProducts();
+            const categories = [...new Set(allProducts.map(p => p.category).filter(Boolean))].map(c => ({
                 name: c,
                 slug: c.toLowerCase().replace(/ /g, '-'),
-                count: products.filter(p => p.category === c).length
+                count: allProducts.filter(p => p.category === c).length
             }));
 
-            // Filter by category
-            if (category) {
-                products = products.filter(p => p.slug === category || p.category.toLowerCase().replace(/ /g, '-') === category);
+            // ---- Kick off server-side fetch for the current page/category ----
+            const fetchKey = JSON.stringify({ category, search, page: currentPage, minPrice, maxPrice, rating });
+            if (State._lastFetchKey !== fetchKey && !categoryLoading) {
+                State._lastFetchKey = fetchKey;
+                const fetchFilters = { page: currentPage, limit: 100 };
+                if (category) fetchFilters.category = categories.find(c => c.slug === category)?.name || category;
+                if (search) fetchFilters.search = search;
+                State.fetchProductPage(fetchFilters).then(() => Router.refresh());
             }
 
-            // Filter by Price
-            if (params.minPrice) products = products.filter(p => (State.get().userRole === 'business' ? p.bulkPrice : p.price) >= params.minPrice);
-            if (params.maxPrice) products = products.filter(p => (State.get().userRole === 'business' ? p.bulkPrice : p.price) <= params.maxPrice);
+            // ---- Products currently in view ----
+            let displayProducts = categoryProducts || [];
+            const meta = categoryMeta || { total: displayProducts.length, page: currentPage, totalPages: 1, pageSize: 100 };
+            const totalPages = meta.totalPages || 1;
+            const totalCount = meta.total || 0;
 
-            // Filter by Rating
-            if (params.rating) products = products.filter(p => p.rating >= parseFloat(params.rating));
-
-            // Advanced Weighted Search
+            // Client-side filters on the returned page (price/rating — not worth a round-trip)
+            if (minPrice) displayProducts = displayProducts.filter(p => (State.get().userRole === 'business' ? p.bulkPrice : p.price) >= parseFloat(minPrice));
+            if (maxPrice) displayProducts = displayProducts.filter(p => (State.get().userRole === 'business' ? p.bulkPrice : p.price) <= parseFloat(maxPrice));
+            if (rating)   displayProducts = displayProducts.filter(p => p.rating >= parseFloat(rating));
             if (search) {
-                products = products.map(p => {
-                    let weight = 0;
-                    const q = search.toLowerCase();
-                    if (p.name.toLowerCase() === q) weight += 100;
-                    else if (p.name.toLowerCase().startsWith(q)) weight += 50;
-                    else if (p.name.toLowerCase().includes(q)) weight += 20;
-                    if (p.category.toLowerCase().includes(q)) weight += 10;
-                    return { ...p, searchWeight: weight };
-                }).filter(p => p.searchWeight > 0).sort((a, b) => b.searchWeight - a.searchWeight);
+                displayProducts = displayProducts.map(p => {
+                    let w = 0; const q = search.toLowerCase();
+                    if (p.name.toLowerCase() === q) w += 100;
+                    else if (p.name.toLowerCase().startsWith(q)) w += 50;
+                    else if (p.name.toLowerCase().includes(q)) w += 20;
+                    if ((p.category || '').toLowerCase().includes(q)) w += 10;
+                    return { ...p, _w: w };
+                }).filter(p => p._w > 0).sort((a, b) => b._w - a._w);
             }
 
-            window.currentProducts = products;
-            const itemsPerPage = 12;
-            const totalPages = Math.ceil(products.length / itemsPerPage);
-            const startIndex = (page - 1) * itemsPerPage;
-            const paginatedProducts = products.slice(startIndex, startIndex + itemsPerPage);
+            window.currentProducts = displayProducts;
+
+            // ---- Build pagination URL — safe string concat (no nested template literals) ----
+            function buildPageUrl(p) {
+                var qs = 'page=' + p;
+                if (category) qs += '&category=' + encodeURIComponent(category);
+                if (search)   qs += '&search='   + encodeURIComponent(search);
+                if (minPrice) qs += '&minPrice='  + minPrice;
+                if (maxPrice) qs += '&maxPrice='  + maxPrice;
+                if (rating)   qs += '&rating='    + rating;
+                return '/products?' + qs;
+            }
+
+            // ---- Pagination bar — built with string concat to avoid nested backtick issues ----
+            function buildPaginationBar() {
+                if (totalPages <= 1) return '';
+                var pageNums = [];
+                var range = 2;
+                for (var i = 1; i <= totalPages; i++) {
+                    if (i === 1 || i === totalPages || (i >= currentPage - range && i <= currentPage + range)) {
+                        pageNums.push(i);
+                    } else if (pageNums[pageNums.length - 1] !== '...') {
+                        pageNums.push('...');
+                    }
+                }
+                var prevDisabled = currentPage <= 1;
+                var nextDisabled = currentPage >= totalPages;
+                var prevClass = prevDisabled
+                    ? 'border-slate-100 text-slate-300 cursor-not-allowed'
+                    : 'border-blue-200 text-blue-600 hover:bg-blue-600 hover:text-white hover:border-blue-600';
+                var nextClass = nextDisabled
+                    ? 'border-slate-100 text-slate-300 cursor-not-allowed'
+                    : 'border-blue-200 text-blue-600 hover:bg-blue-600 hover:text-white hover:border-blue-600';
+
+                var html = '<div class="flex items-center justify-center gap-2 mt-8 flex-wrap">';
+                html += '<button ' + (prevDisabled ? 'disabled' : 'onclick="Router.navigate(\'' + buildPageUrl(currentPage - 1) + '\')"') +
+                    ' class="flex items-center gap-1 px-4 py-2 rounded-xl border-2 font-bold text-sm transition-all ' + prevClass + '">' +
+                    '<i data-lucide="chevron-left" class="w-4 h-4"></i> Prev</button>';
+
+                pageNums.forEach(function(p) {
+                    if (p === '...') {
+                        html += '<span class="px-2 text-slate-400 font-bold select-none">…</span>';
+                    } else {
+                        var isActive = p === currentPage;
+                        var btnClass = isActive
+                            ? 'bg-blue-600 border-blue-600 text-white shadow-lg shadow-blue-200'
+                            : 'border-slate-200 text-slate-600 hover:border-blue-400 hover:text-blue-600';
+                        html += '<button onclick="Router.navigate(\'' + buildPageUrl(p) + '\')" class="w-10 h-10 rounded-xl border-2 font-bold text-sm transition-all ' + btnClass + '">' + p + '</button>';
+                    }
+                });
+
+                html += '<button ' + (nextDisabled ? 'disabled' : 'onclick="Router.navigate(\'' + buildPageUrl(currentPage + 1) + '\')"') +
+                    ' class="flex items-center gap-1 px-4 py-2 rounded-xl border-2 font-bold text-sm transition-all ' + nextClass + '">' +
+                    'Next <i data-lucide="chevron-right" class="w-4 h-4"></i></button>';
+                html += '</div>';
+                html += '<p class="text-center text-xs text-slate-400 mt-3">Page ' + currentPage + ' of ' + totalPages + ' &nbsp;·&nbsp; ' + totalCount.toLocaleString() + ' total products</p>';
+                return html;
+            }
+
+            // ---- Pre-compute dynamic class strings to avoid template literal parsing errors ----
+            var allCatActiveClass = !category ? 'border-blue-500 bg-blue-50/50 text-blue-600' : 'border-transparent hover:bg-slate-50 text-slate-600';
+
+            var allCatCountClass  = !category ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-400';
+            var loadingStatusHtml = categoryLoading
+                ? '<span class="inline-flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-blue-400 animate-ping inline-block"></span> Loading products\u2026</span>'
+                : 'Showing <b>' + displayProducts.length + '</b> products' + (totalCount ? ' of <b>' + totalCount.toLocaleString() + '</b> total' : '');
+
+            var categoryItemsHtml = categories.map(function(cat) {
+                var isActive = category === cat.slug;
+                var cls  = isActive ? 'border-blue-500 bg-blue-50/50 text-blue-600' : 'border-transparent hover:bg-slate-50 text-slate-600';
+                var cnt  = isActive ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-400';
+                return '<div onclick="Router.navigate(\'/products?category=' + cat.slug + '\')" class="flex items-center justify-between p-2 rounded-xl border-2 ' + cls + ' cursor-pointer transition-all group">'
+                     + '<span class="text-sm font-bold capitalize">' + cat.name + '</span>'
+                     + '<span class="text-[10px] font-bold ' + cnt + ' px-2 py-0.5 rounded-full group-hover:bg-blue-100 group-hover:text-blue-600">' + cat.count + '</span>'
+                     + '</div>';
+            }).join('');
+
+            var ratingItemsHtml = [1, 2, 3, 4, 5].map(function(r) {
+                var isActive = rating == r;
+                var catParam = category ? '&category=' + category : '';
+                var cls  = isActive ? 'border-blue-500 bg-blue-50 text-blue-600' : 'border-slate-100 hover:border-slate-300';
+                var star = isActive ? 'fill-blue-500' : 'fill-slate-200 text-slate-300';
+                return '<button onclick="Router.navigate(\'/products?rating=' + r + catParam + '\')" class="p-2 rounded-xl border-2 ' + cls + ' transition-all flex flex-col items-center gap-1">'
+                     + '<span class="text-xs font-bold">' + r + '</span>'
+                     + '<i data-lucide="star" class="w-3 h-3 ' + star + '"></i>'
+                     + '</button>';
+            }).join('');
+
+            var productsGridHtml;
+            if (categoryLoading) {
+                productsGridHtml = '<div class="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">'
+                    + Array(12).fill(Components.SkeletonProductCard()).join('')
+                    + '</div>';
+            } else if (displayProducts.length > 0) {
+                productsGridHtml = '<div class="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">'
+                    + displayProducts.map(function(p) { return Components.ProductCard(p); }).join('')
+                    + '</div>'
+                    + buildPaginationBar();
+            } else {
+                productsGridHtml = Components.EmptyState('search', 'No Products Found', 'Try adjusting your filters or search query',
+                    '<button onclick="Router.navigate(\'/products\')" class="bg-blue-600 text-white px-6 py-3 rounded-xl font-bold">Clear Filters</button>');
+            }
+
+            var breadcrumbLabel = category ? (categories.find(function(c) { return c.slug === category; }) || {}).name || 'Category' : 'All Products';
 
             return `
                 <div class="px-4 sm:px-0">
                     ${Components.Breadcrumbs([
-                { label: 'Home', link: '/' },
-                { label: category ? categories.find(c => c.slug === category)?.name || 'Products' : 'All Products' }
-            ])}
+                        { label: 'Home', link: '/' },
+                        { label: breadcrumbLabel }
+                    ])}
 
                     <div class="flex flex-col lg:flex-row gap-8">
                         <!-- Filters Sidebar -->
@@ -1293,61 +1406,36 @@ export const Pages = {
                                 <!-- Categories -->
                                 <div class="mb-8">
                                     <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-4">Categories</label>
-                                    <div class="space-y-1">
-                                        ${categories.map(cat => `
-                                            <div onclick="Router.navigate('/category/${cat.slug}')" class="flex items-center justify-between p-2 rounded-xl border-2 ${category === cat.slug ? 'border-blue-500 bg-blue-50/50 text-blue-600' : 'border-transparent hover:bg-slate-50 text-slate-600'} cursor-pointer transition-all group">
-                                                <span class="text-sm font-bold capitalize">${cat.name}</span>
-                                                <span class="text-[10px] font-bold ${category === cat.slug ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-400'} px-2 py-0.5 rounded-full group-hover:bg-blue-100 group-hover:text-blue-600">${cat.count}</span>
-                                            </div>
-                                        `).join('')}
+                                    <div class="space-y-1 max-h-72 overflow-y-auto pr-1">
+                                        <div onclick="Router.navigate('/products')" class="${allCatActiveClass} flex items-center justify-between p-2 rounded-xl border-2 cursor-pointer transition-all group">
+                                            <span class="text-sm font-bold">All Products</span>
+                                            <span class="text-[10px] font-bold ${allCatCountClass} px-2 py-0.5 rounded-full">${allProducts.length || totalCount}</span>
+                                        </div>
+                                        ${categoryItemsHtml}
                                     </div>
                                 </div>
 
                                 <!-- Price Range -->
                                 <div class="mb-8 p-4 bg-slate-50/50 rounded-2xl border border-slate-100">
                                     <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Price Range</label>
-                                    ${Components.DualHandleSlider('price-min', 'price-max', params.minPrice || 0, params.maxPrice || 1000000)}
+                                    ${Components.DualHandleSlider('price-min', 'price-max', minPrice || 0, maxPrice || 1000000)}
                                     <button onclick="Pages.consumer.applyPriceFilter()" class="w-full mt-4 bg-blue-600 text-white py-2 rounded-xl text-xs font-bold hover:bg-blue-700 transition-all shadow-lg shadow-blue-100">Apply Price</button>
                                 </div>
 
                                 <!-- Rating -->
                                 <div class="mb-2">
                                     <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-4">Minimum Rating</label>
-                                    <div class="grid grid-cols-5 gap-2">
-                                        ${[1, 2, 3, 4, 5].map(r => `
-                                            <button onclick="Router.navigate('/products?rating=${r}${category ? '&category='+category : ''}')" class="p-2 rounded-xl border-2 ${params.rating == r ? 'border-blue-500 bg-blue-50 text-blue-600' : 'border-slate-100 hover:border-slate-300'} transition-all flex flex-col items-center gap-1">
-                                                <span class="text-xs font-bold">${r}</span>
-                                                <i data-lucide="star" class="w-3 h-3 ${params.rating == r ? 'fill-blue-500' : 'fill-slate-200 text-slate-300'}"></i>
-                                            </button>
-                                        `).join('')}
-                                    </div>
+                                    <div class="grid grid-cols-5 gap-2">${ratingItemsHtml}</div>
                                 </div>
                             </div>
                         </aside>
 
                         <!-- Products Grid -->
-                        <div class="flex-1">
-                            <div class="flex justify-between items-center mb-6">
-                                <p class="text-sm text-slate-500">Showing ${startIndex + 1}-${Math.min(startIndex + itemsPerPage, products.length)} of ${products.length} products</p>
-                                <select class="bg-transparent border rounded-lg px-4 py-2 text-sm font-bold text-slate-800 outline-none">
-                                    <option>Sort by: Newest</option>
-                                    <option>Price: Low to High</option>
-                                    <option>Price: High to Low</option>
-                                    <option>Rating: High to Low</option>
-                                    <option>Most Popular</option>
-                                </select>
+                        <div class="flex-1 min-w-0">
+                            <div class="flex justify-between items-center mb-6 flex-wrap gap-2">
+                                <p class="text-sm text-slate-500">${loadingStatusHtml}</p>
                             </div>
-
-                            ${isLoading ? `
-                                <div class="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
-                                    ${Array(itemsPerPage).fill(Components.SkeletonProductCard()).join('')}
-                                </div>
-                            ` : (paginatedProducts.length > 0 ? `
-                                <div class="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
-                                    ${paginatedProducts.map(product => Components.ProductCard(product)).join('')}
-                                </div>
-                                ${Components.Pagination(page, totalPages, 'Pages.consumer.changePage')}
-                            ` : Components.EmptyState('search', 'No Products Found', 'Try adjusting your filters or search query', '<button onclick="Router.navigate(\'/products\')" class="bg-blue-600 text-white px-6 py-3 rounded-xl font-bold">Clear Filters</button>'))}
+                            ${productsGridHtml}
                         </div>
                     </div>
                 </div>
@@ -1367,6 +1455,9 @@ export const Pages = {
         productDetail(productId) {
             const product = State.getProducts().find(p => p.id === parseInt(productId));
             if (!product) return Components.EmptyState('package', 'Product Not Found', 'The product you\'re looking for doesn\'t exist');
+
+            // Track View
+            State.trackProductView(productId);
 
             // Define loading handler globally if not exists
             if (!window.handleImageLoad) {
@@ -6437,7 +6528,7 @@ export const Pages = {
                         </div>
                     </div>
 
-                    <div class="glass-card rounded-2xl overflow-hidden">
+                    <div class="glass-card rounded-2xl overflow-hidden mb-12">
                         <div class="border-b border-slate-100 bg-slate-50/50 p-2 flex gap-1 overflow-x-auto scrollbar-hide">
                             <button onclick="State.fetchAdminUsers({ role: 'all' }).then(() => Router.refresh())" class="px-4 py-2 ${(!State.get().lastAdminFilters?.role || State.get().lastAdminFilters?.role === 'all') ? 'bg-blue-600 text-white' : 'hover:bg-slate-100 text-slate-600'} rounded-xl text-xs font-black uppercase tracking-widest transition-all">All Users</button>
                             <button onclick="State.fetchAdminUsers({ role: 'consumer' }).then(() => Router.refresh())" class="px-4 py-2 ${(State.get().lastAdminFilters?.role === 'consumer') ? 'bg-blue-600 text-white' : 'hover:bg-slate-100 text-slate-600'} rounded-xl text-xs font-black uppercase tracking-widest transition-all">Consumers</button>
@@ -6450,7 +6541,8 @@ export const Pages = {
                             <button onclick="State.fetchAdminUsers({ status: 'unverified' }).then(() => Router.refresh())" class="px-4 py-2 ${(State.get().lastAdminFilters?.status === 'unverified') ? 'bg-orange-600 text-white' : 'hover:bg-slate-100 text-orange-600'} rounded-xl text-xs font-black uppercase tracking-widest transition-all">Unverified</button>
                         </div>
                         
-                        <table class="w-full">
+                        <div class="overflow-x-auto">
+                            <table class="w-full min-w-[800px]">
                             <thead class="bg-slate-50">
                                 <tr>
                                     <th class="p-6 text-left">
@@ -6501,22 +6593,28 @@ export const Pages = {
                                                 </span>
                                             </td>
                                             <td class="p-6 text-right font-medium text-slate-600">-</td>
-                                            <td class="p-6 text-center">
-                                                <button onclick="window.editAdminUser(${user.id}, '${user.role}', ${user.is_verified})" class="p-2 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-blue-600 transition-colors" title="Edit User">
-                                                    <i data-lucide="edit" class="w-5 h-5"></i>
-                                                </button>
+                                            <td class="p-6">
+                                                <div class="flex items-center justify-center gap-2">
+                                                    <button onclick="window.editAdminUser(${user.id}, '${user.role}', ${user.is_verified})" class="p-2 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-blue-600 transition-colors" title="Edit User">
+                                                        <i data-lucide="edit" class="w-4 h-4"></i>
+                                                    </button>
+                                                    <button onclick="window.deleteAdminUser(${user.id})" class="p-2 hover:bg-red-50 rounded-lg text-slate-400 hover:text-red-600 transition-colors" title="Delete User">
+                                                        <i data-lucide="trash-2" class="w-4 h-4"></i>
+                                                    </button>
+                                                </div>
                                             </td>
                                         </tr>
                                     `;
             }).join('') : `
                                     <tr>
-                                        <td colspan="5" class="p-8 text-center text-slate-500">
+                                        <td colspan="6" class="p-8 text-center text-slate-500">
                                             No users found.
                                         </td>
                                     </tr>
                                 `}
                             </tbody>
                         </table>
+                    </div>
                         
                         <div class="p-6 border-t border-slate-100 flex justify-between items-center">
                             <p class="text-sm text-slate-500">Showing ${users.length} users</p>
@@ -7767,8 +7865,8 @@ window.updateCartUI = () => {
     const summaryContainer = document.getElementById('cart-summary-details');
     const countTitle = document.getElementById('cart-count-title');
 
-    if (itemsContainer) itemsContainer.innerHTML = Pages.renderCartItems(cart);
-    if (summaryContainer) summaryContainer.innerHTML = Pages.renderCartSummary(total);
+    if (itemsContainer) itemsContainer.innerHTML = Pages.consumer.renderCartItems(cart);
+    if (summaryContainer) summaryContainer.innerHTML = Pages.consumer.renderCartSummary(total);
     if (countTitle) countTitle.textContent = cart.length;
 
     // Update global cart badge
@@ -7789,3 +7887,52 @@ window.removeCartItem = async (id) => {
     window.updateCartUI();
 };
 
+
+// ===========================================================
+// WISHLIST UX HANDLERS (PARTIAL RE-RENDERING)
+// ===========================================================
+
+window.updateWishlistUI = (productId, isInWishlist) => {
+    // 1. Update all heart icons globally
+    const heartIcons = document.querySelectorAll(`[onclick*="toggleWishlist(${productId})"] i, [onclick*="toggleWishlist('${productId}')"] i`);
+    heartIcons.forEach(icon => {
+        if (isInWishlist) {
+            icon.classList.add('fill-red-500', 'text-red-500');
+            icon.classList.remove('text-slate-400', 'text-slate-600');
+        } else {
+            icon.classList.remove('fill-red-500', 'text-red-500');
+            icon.classList.add('text-slate-400');
+        }
+    });
+
+    // 2. If we are on the wishlist page, refresh the grid
+    if (window.Router.getCurrentRoute()?.path === '/account/wishlist') {
+        window.updateWishlistGrid();
+    }
+};
+
+window.updateWishlistGrid = () => {
+    const wishlist = State.get().wishlist;
+    const container = document.querySelector('.grid-cols-1.sm\\:grid-cols-2.lg\\:grid-cols-4');
+    const title = document.querySelector('h1.text-3xl.font-bold');
+
+    if (title) title.textContent = `My Wishlist (${wishlist.length} items)`;
+
+    if (container) {
+        if (wishlist.length > 0) {
+            container.innerHTML = wishlist.map(product => Components.ProductCard(product)).join('');
+            if (window.lucide) lucide.createIcons();
+        } else {
+            // If empty, just full refresh to show empty state
+            Router.navigate('/account/wishlist');
+        }
+    }
+};
+
+window.deleteAdminUser = async (userId) => {
+    const success = await State.deleteAdminUser(userId);
+    if (success) {
+        await State.fetchAdminUsers();
+        Router.refresh();
+    }
+};

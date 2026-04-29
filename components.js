@@ -108,28 +108,31 @@ export const Components = {
                         </div>
                         <span class="text-xs text-slate-400">(${product.reviews})</span>
                     </div>
-                    <div class="flex justify-between items-center">
+                    <div class="mt-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                         <div>
                             ${state.userRole === 'business' ? `
-                                <p class="text-xs text-slate-400 line-through">${State.formatCurrency(product.price)}</p>
+                                <p class="text-[10px] text-slate-400 line-through">${State.formatCurrency(product.price)}</p>
                                 <p class="text-xl font-bold text-blue-600">${State.formatCurrency(price)}</p>
                             ` : `
-                                <p class="text-xl font-bold text-slate-800">${State.formatCurrency(price)}</p>
+                                <p class="text-xl font-bold text-slate-900">${State.formatCurrency(price)}</p>
                             `}
                         </div>
+                        
                         ${showAddToCart ? `
-                            <div class="flex gap-2">
-                                <button onclick="event.stopPropagation(); Components.addToCartAction(${product.id})" class="bg-blue-600/10 text-blue-600 p-3 rounded-lg hover:bg-blue-600 hover:text-white transition-all" title="Add to Cart">
-                                    <i data-lucide="shopping-cart" class="w-4 h-4"></i>
-                                </button>
-                                <button onclick="event.stopPropagation(); Components.buyNowAction(${product.id})" class="bg-slate-900 text-white px-4 py-2 rounded-lg text-xs font-bold hover:bg-slate-800 transition-all">
-                                    Buy Now
+                            <div class="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+                                <button onclick="event.stopPropagation(); Components.addToCartAction(${product.id})" class="bg-blue-600 text-white py-3 sm:px-4 rounded-2xl hover:bg-blue-700 transition-all flex items-center justify-center shadow-lg shadow-blue-100 gap-2" title="Add to Cart">
+                                    <i data-lucide="shopping-cart" class="w-5 h-5"></i>
+                                    <span class="sm:hidden font-bold">Add to Cart</span>
                                 </button>
                                 ${state.userRole === 'dropshipper' ? `
-                                    <button onclick="event.stopPropagation(); State.addToStore(${product.id})" class="bg-purple-600 text-white p-3 rounded-lg hover:bg-purple-700 transition-all" title="Add to Store">
-                                        <i data-lucide="plus" class="w-4 h-4"></i>
+                                    <button onclick="event.stopPropagation(); State.addToStore(${product.id})" class="bg-purple-600 text-white p-3 rounded-2xl hover:bg-purple-700 transition-all shadow-lg shadow-purple-100" title="Add to Store">
+                                        <i data-lucide="plus" class="w-5 h-5"></i>
                                     </button>
                                 ` : ''}
+                                <button onclick="event.stopPropagation(); Components.buyNowAction(${product.id})" class="bg-slate-900 text-white py-3 sm:px-6 rounded-2xl text-xs font-bold hover:bg-slate-800 transition-all shadow-xl shadow-slate-200 flex items-center justify-center gap-2">
+                                    <i data-lucide="zap" class="w-4 h-4 text-amber-400 fill-amber-400"></i>
+                                    Buy Now
+                                </button>
                             </div>
                         ` : ''}
                     </div>
@@ -157,9 +160,12 @@ export const Components = {
                         </div>
                         <div class="h-3 w-8 bg-slate-200 rounded"></div>
                     </div>
-                    <div class="flex justify-between items-center">
-                        <div class="h-6 w-20 bg-slate-200 rounded"></div>
-                        <div class="w-10 h-10 bg-slate-200 rounded-lg"></div>
+                    <div class="mt-4 space-y-3">
+                        <div class="flex items-center justify-between">
+                            <div class="h-6 w-24 bg-slate-200 rounded"></div>
+                            <div class="w-10 h-10 bg-slate-200 rounded-xl"></div>
+                        </div>
+                        <div class="h-10 w-full bg-slate-100 rounded-xl"></div>
                     </div>
                 </div>
             </div>
@@ -564,20 +570,25 @@ export const Components = {
         document.getElementById(id)?.classList.add('hidden');
     },
 
-    toggleWishlist(productId) {
-        const product = window.currentProducts?.find(p => p.id === productId);
+    async toggleWishlist(productId) {
+        const product = (window.currentProducts || []).find(p => p.id === productId) || (State.get().products || []).find(p => p.id === productId);
         if (product) {
-            if (State.isInWishlist(productId)) {
-                State.removeFromWishlist(productId);
+            const isInWishlist = State.isInWishlist(productId);
+            if (isInWishlist) {
+                await State.removeFromWishlist(productId);
             } else {
-                State.addToWishlist(product);
+                await State.addToWishlist(product);
             }
-            // Trigger re-render
-            if (window.currentRenderFunction) {
+            
+            // Partial UI update
+            if (window.updateWishlistUI) {
+                window.updateWishlistUI(productId, !isInWishlist);
+            } else if (window.currentRenderFunction) {
                 window.currentRenderFunction();
             }
         }
     },
+
 
     async addToCartAction(productId) {
         const qtyInput = document.getElementById('product-qty-input');
@@ -689,12 +700,17 @@ export const Components = {
 
         const activeItems = navItems[role] || navItems.consumer;
 
-        return activeItems.map(item => `
-            <a href="#${item.path}" class="mobile-nav-item ${currentPath === item.path ? 'active' : ''}">
-                <i data-lucide="${item.icon}" class="w-5 h-5"></i>
+        return activeItems.map(item => {
+            const isActive = item.path === '/' ? currentPath === '/' : currentPath.startsWith(item.path);
+            return `
+            <a href="#${item.path}" class="mobile-nav-item ${isActive ? 'active' : ''}">
+                <div class="nav-icon-wrap">
+                    <i data-lucide="${item.icon}" class="w-5 h-5"></i>
+                </div>
                 <span>${item.label}</span>
             </a>
-        `).join('');
+            `;
+        }).join('');
     },
 
     MobileMenu() {
