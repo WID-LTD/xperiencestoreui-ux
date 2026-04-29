@@ -145,48 +145,155 @@ export const State = {
     },
 
     set(update) {
+        const oldRole = this._state.userRole;
         this._state = { ...this._state, ...update };
         this._persistNonSensitive();
+        
+        if (update.userRole && update.userRole !== oldRole) {
+            console.log(`[STATE] Role changed: ${oldRole} -> ${update.userRole}`);
+        }
+
+        // Globally notify UI of state change for reactive updates (e.g., role changes)
+        if (window.updateMobileUI) window.updateMobileUI();
+        if (window.updateNotificationsUI) window.updateNotificationsUI();
+        if (window.updateUserUI) window.updateUserUI();
     },
 
-    // Fetch products from API with optional filters
-    async fetchProducts(filters = {}) {
-        this._state.loading = true;
+    setUser(role, user) {
+        this.set({ 
+            userRole: role || 'consumer', 
+            currentUser: user,
+            loading: false 
+        });
+        // After setting user, refresh their specific data
+        this.refreshAllData();
+    },
+
+    logout() {
+        this.set({ 
+            userRole: 'consumer', 
+            currentUser: null,
+            cart: [],
+            wishlist: [],
+            notifications: []
+        });
+        // Clear sensitive caches
+        localStorage.removeItem('xperince_session');
+        document.cookie = "xperince_user=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+    },
+
+    // Fetch products from API with optional filters — handles paginated response
+    async fetchProducts(filters = {}, silent = false) {
+        if (!silent) this._state.loading = true;
         try {
             const params = new URLSearchParams(filters);
             const response = await fetch(window.apiUrl(`/api/products?${params}`));
             if (response.ok) {
-                const products = await response.json();
-                
-                // Update specific product slices
+                const data = await response.json();
+                // Support both legacy array responses and new paginated {products, total} shape
+                const products = Array.isArray(data) ? data : (data.products || []);
+                const meta = Array.isArray(data) ? null : data;
+
+                // Sponsored fetch — store separately
                 if (filters.sponsored) {
                     this._state.sponsoredProducts = products;
-                } else if (filters.limit && !filters.category && !filters.search) {
-                    this._state.recommendedProducts = products;
                 }
-                
-                if (!filters.sponsored && !filters.category && !filters.limit) {
+                // Any other general fetch — populate main products + pagination meta
+                else {
                     this._state.products = products;
+                    if (meta) {
+                        this._state.productsMeta = {
+                            total: meta.total,
+                            page: meta.page,
+                            pageSize: meta.pageSize,
+                            totalPages: meta.totalPages
+                        };
+                    }
                 }
             }
         } catch (error) {
             console.error('Failed to fetch products:', error);
         } finally {
-            // Always set fetched flags to true if these filters were used, 
-            // even on error, to prevent infinite retry loops in UI
             if (filters.sponsored) this._state.fetchedSponsored = true;
-            if (filters.limit && !filters.category && !filters.search) this._state.fetchedRecommended = true;
-            if (!Object.keys(filters).length) this._state.fetchedProducts = true;
-            
-            this._state.loading = false;
+            if (!filters.sponsored) this._state.fetchedProducts = true;
+            if (!silent) this._state.loading = false;
             this._persistNonSensitive();
         }
         return this._state.products;
     },
 
+    // Fetch a specific page of products for the products/category page
+    async fetchProductPage(filters = {}) {
+        this._state.categoryLoading = true;
+        try {
+            const params = new URLSearchParams({ limit: 100, ...filters });
+            const response = await fetch(window.apiUrl(`/api/products?${params}`));
+            if (response.ok) {
+                const data = await response.json();
+                const products = Array.isArray(data) ? data : (data.products || []);
+                const meta = Array.isArray(data) ? null : data;
+                this._state.categoryProducts = products;
+                if (meta) {
+                    this._state.categoryMeta = {
+                        total: meta.total,
+                        page: meta.page,
+                        pageSize: meta.pageSize,
+                        totalPages: meta.totalPages
+                    };
+                }
+                return { products, meta };
+            }
+        } catch (error) {
+            console.error('Failed to fetch product page:', error);
+        } finally {
+            this._state.categoryLoading = false;
+        }
+        return { products: [], meta: null };
+    },
+
     async fetchRecommendations() {
-        // Basic recommendation: just get 4 interesting products
-        return this.fetchProducts({ limit: 4 });
+        const viewedIds = this.getRecentViews();
+        console.log(`[STATE] Fetching recommendations based on recent views:`, viewedIds);
+        
+        // If we have recent views, fetch products from those categories or similar
+        // For now, let's just fetch with a limit and we'll refine sorting if needed
+        return this.fetchProducts({ limit: 8, recent: viewedIds.join(',') });
+    },
+
+    getRecentViews() {
+        const cookie = document.cookie.split('; ').find(row => row.startsWith('recent_views='));
+        if (!cookie) return [];
+        return cookie.split('=')[1].split(',').filter(Boolean);
+    },
+
+    trackProductView(productId) {
+        let viewedIds = this.getRecentViews();
+        // Remove if exists and add to front
+        viewedIds = viewedIds.filter(id => id !== productId.toString());
+        viewedIds.unshift(productId.toString());
+        // Keep only last 10
+        viewedIds = viewedIds.slice(0, 10);
+        
+        const expires = new Date();
+        expires.setTime(expires.getTime() + (30 * 24 * 60 * 60 * 1000)); // 30 days
+        document.cookie = `recent_views=${viewedIds.join(',')};expires=${expires.toUTCString()};path=/`;
+        
+        console.log(`[STATE] Tracked view for product ${productId}. History:`, viewedIds);
+    },
+
+    async fetchStats() {
+        try {
+            const res = await fetch(`${API}/products/stats`);
+            if (res.ok) {
+                const stats = await res.json();
+                this._state.productStats = stats;
+                this._persistNonSensitive();
+                return stats;
+            }
+        } catch (err) {
+            console.error('Fetch stats error:', err);
+        }
+        return null;
     },
 
     // Fetch notifications for the current user
@@ -198,6 +305,17 @@ export const State = {
                 const notifications = await res.json();
                 this._state.notifications = notifications;
                 this._persistNonSensitive();
+
+                // Real-time: Mark undelivered notifications as delivered on this device
+                const undelivered = notifications.filter(n => !n.delivered_at).map(n => n.id);
+                if (undelivered.length > 0) {
+                    await fetch(`${API}/notifications/mark-delivered`, {
+                        method: 'POST',
+                        headers: authHeaders(),
+                        body: JSON.stringify({ ids: undelivered })
+                    });
+                }
+
                 return notifications;
             }
         } catch (err) {
@@ -207,6 +325,13 @@ export const State = {
     },
 
     async markNotificationAsRead(id) {
+        // Prevent local toast IDs (timestamps) from hitting the database sequence
+        if (typeof id === 'number' && id > 2147483647) {
+            this._state.notifications = this._state.notifications.filter(n => n.id !== id);
+            this._persistNonSensitive();
+            return true;
+        }
+
         try {
             const res = await fetch(`${API}/notifications/${id}/read`, {
                 method: 'PUT',
@@ -256,8 +381,9 @@ export const State = {
     },
 
     // Load cart from DB and update local cache
-    async _loadCartFromDB() {
+    async _loadCartFromDB(silent = false) {
         this._state.fetchingCart = true;
+        if (window.Router?.getCurrentRoute()?.path === '/cart') if (!silent) this._state.loading = true;
         try {
             const data = await _dbCartOp('GET', '');
             this._state.cart = data.items || [];
@@ -266,12 +392,14 @@ export const State = {
             console.warn('Could not load cart from DB:', err.message);
         } finally {
             this._state.fetchingCart = false;
+            if (!silent) this._state.loading = false;
         }
     },
 
     // Load wishlist from DB and update local cache
-    async _loadWishlistFromDB() {
+    async _loadWishlistFromDB(silent = false) {
         this._state.fetchingWishlist = true;
+        if (window.Router?.getCurrentRoute()?.path === '/wishlist') if (!silent) this._state.loading = true;
         try {
             const data = await _dbWishlistOp('GET', '');
             this._state.wishlist = data.items || [];
@@ -280,6 +408,7 @@ export const State = {
             console.warn('Could not load wishlist from DB:', err.message);
         } finally {
             this._state.fetchingWishlist = false;
+            if (!silent) this._state.loading = false;
         }
     },
 
@@ -370,11 +499,6 @@ export const State = {
         return { store: { store_name: 'My Store', store_slug: 'mystore', description: '' }, products: [] };
     },
 
-
-
-
-
-
     async handlePayout(event) {
         event.preventDefault();
         const form = event.target;
@@ -428,7 +552,7 @@ export const State = {
     // CART METHODS (DB-backed for logged-in users, localStorage for guests)
     // ===========================================================
 
-    async fetchOrders() {
+    async fetchOrders(silent = false) {
         try {
             const res = await fetch(`${API}/orders`, { headers: authHeaders() });
             if (res.ok) {
@@ -450,7 +574,8 @@ export const State = {
                 this._state.cart = data.items || [];
                 this._persistNonSensitive();
                 this._updateCartBadge();
-                this.notify('Added to cart', 'success');
+                this.notify(`${product.name} added to cart`, 'success');
+                if (window.Router?.getCurrentRoute()?.path === '/cart') window.Router.handleRoute();
                 return this._state.cart;
             } catch (err) {
                 this.notify(err.message || 'Failed to add to cart', 'error');
@@ -463,7 +588,7 @@ export const State = {
         else { this._state.cart.push({ ...product, quantity }); }
         this._persistNonSensitive();
         this._updateCartBadge();
-        this.notify('Added to cart', 'success');
+        this.notify(`${product.name} added to cart`, 'success');
         return this._state.cart;
     },
 
@@ -475,6 +600,7 @@ export const State = {
                 this._persistNonSensitive();
                 this._updateCartBadge();
                 this.notify('Removed from cart', 'info');
+                if (window.Router?.getCurrentRoute()?.path === '/cart') window.Router.handleRoute();
                 return this._state.cart;
             } catch (err) {
                 this.notify('Failed to remove item', 'error');
@@ -496,6 +622,7 @@ export const State = {
                 this._state.cart = data.items || [];
                 this._persistNonSensitive();
                 this._updateCartBadge();
+                if (window.Router?.getCurrentRoute()?.path === '/cart') window.Router.handleRoute();
                 return this._state.cart;
             } catch (err) {
                 this.notify('Failed to update quantity', 'error');
@@ -537,12 +664,27 @@ export const State = {
     },
 
     _updateCartBadge() {
-        const badge = document.getElementById('cart-badge');
-        if (badge) {
-            const count = this.getCartCount();
-            badge.textContent = count;
-            badge.classList.toggle('hidden', count === 0);
-        }
+        const count = this.getCartCount();
+        
+        // Update both the main app badge and component badges
+        const badges = [
+            document.getElementById('cart-badge'),
+            document.getElementById('mobile-cart-badge'),
+            ...document.querySelectorAll('.shopping-cart-badge')
+        ];
+
+        badges.forEach(badge => {
+            if (badge) {
+                badge.textContent = count;
+                badge.classList.toggle('hidden', count === 0);
+                // Also handle display: none if using utility classes
+                if (count === 0) {
+                    badge.style.display = 'none';
+                } else {
+                    badge.style.display = 'flex';
+                }
+            }
+        });
     },
 
     // ===========================================================
@@ -552,10 +694,12 @@ export const State = {
     async addToWishlist(product) {
         if (isLoggedIn()) {
             try {
+                // Assuming _dbWishlistOp is similar to _dbCartOp
                 const data = await _dbWishlistOp('POST', '', { productId: product.id });
                 this._state.wishlist = data.items || [];
                 this._persistNonSensitive();
-                this.notify('Added to wishlist', 'success');
+                this.notify(`${product.name} added to wishlist`, 'success');
+                if (window.Router?.getCurrentRoute()?.path === '/wishlist') window.Router.handleRoute();
                 return this._state.wishlist;
             } catch (err) {
                 this.notify(err.message || 'Failed to add to wishlist', 'error');
@@ -565,7 +709,7 @@ export const State = {
         if (!this._state.wishlist.find(i => i.id === product.id)) {
             this._state.wishlist.push(product);
             this._persistNonSensitive();
-            this.notify('Added to wishlist', 'success');
+            this.notify(`${product.name} added to wishlist`, 'success');
         }
         return this._state.wishlist;
     },
@@ -577,6 +721,7 @@ export const State = {
                 this._state.wishlist = data.items || [];
                 this._persistNonSensitive();
                 this.notify('Removed from wishlist', 'info');
+                if (window.Router?.getCurrentRoute()?.path === '/wishlist') window.Router.handleRoute();
                 return this._state.wishlist;
             } catch (err) {
                 this.notify('Failed to remove from wishlist', 'error');
@@ -599,7 +744,7 @@ export const State = {
     // ORDERS (DB-backed for logged-in users)
     // ===========================================================
 
-    async fetchOrders() {
+    async fetchOrders(silent = false) {
         if (!isLoggedIn()) return this._state.orders || [];
         this._state.fetchingOrders = true;
         try {
@@ -646,7 +791,8 @@ export const State = {
     // SUPPLIER METHODS
     // ===========================================================
 
-    async fetchSupplierStats() {
+    async fetchSupplierStats(silent = false) {
+        if (!silent) this._state.loading = true;
         try {
             const res = await fetch(`${API}/supplier/stats`, { headers: authHeaders() });
             if (res.ok) {
@@ -656,11 +802,14 @@ export const State = {
             }
         } catch (err) {
             console.error('Fetch supplier stats error:', err);
+        } finally {
+            if (!silent) this._state.loading = false;
         }
         return null;
     },
 
-    async fetchSupplierOrders() {
+    async fetchSupplierOrders(silent = false) {
+        if (!silent) this._state.loading = true;
         try {
             const res = await fetch(`${API}/supplier/orders`, { headers: authHeaders() });
             if (res.ok) {
@@ -670,11 +819,14 @@ export const State = {
             }
         } catch (err) {
             console.error('Fetch supplier orders error:', err);
+        } finally {
+            if (!silent) this._state.loading = false;
         }
         return [];
     },
 
-    async fetchSupplierProducts() {
+    async fetchSupplierProducts(silent = false) {
+        if (!silent) this._state.loading = true;
         try {
             const res = await fetch(`${API}/supplier/products`, { headers: authHeaders() });
             if (res.ok) {
@@ -684,6 +836,8 @@ export const State = {
             }
         } catch (err) {
             console.error('Fetch supplier products error:', err);
+        } finally {
+            if (!silent) this._state.loading = false;
         }
         return [];
     },
@@ -802,7 +956,7 @@ export const State = {
         }
     },
 
-    async fetchInventory() {
+    async fetchInventory(silent = false) {
         try {
             const res = await fetch(`${API}/warehouse/inventory`, { headers: authHeaders() });
             if (res.ok) {
@@ -947,7 +1101,7 @@ export const State = {
         return false;
     },
 
-    async fetchAdminLogs() {
+    async fetchAdminLogs(silent = false) {
         try {
             const res = await fetch(`${API}/admin/logs`, { headers: authHeaders() });
             if (res.ok) {
@@ -977,7 +1131,7 @@ export const State = {
         return null;
     },
 
-    async fetchAdminStats() {
+    async fetchAdminStats(silent = false) {
         try {
             const res = await fetch(`${API}/admin/stats`, { headers: authHeaders() });
             if (res.ok) {
@@ -1028,7 +1182,27 @@ export const State = {
         return false;
     },
 
-    async fetchAdminOrders() {
+    async deleteAdminUser(userId) {
+        if (!confirm('Are you sure you want to delete this user? This action cannot be undone.')) return false;
+        try {
+            const res = await fetch(`${API}/admin/users/${userId}`, {
+                method: 'DELETE',
+                headers: authHeaders()
+            });
+            if (res.ok) {
+                this.notify('User deleted successfully', 'success');
+                return true;
+            } else {
+                const data = await res.json();
+                this.notify(data.message || 'Delete failed', 'error');
+            }
+        } catch (err) {
+            this.notify('Network error deleting user', 'error');
+        }
+        return false;
+    },
+
+    async fetchAdminOrders(silent = false) {
         try {
             const res = await fetch(`${API}/admin/orders`, { headers: authHeaders() });
             if (res.ok) {
@@ -1077,7 +1251,7 @@ export const State = {
         return false;
     },
 
-    async fetchAdminAllProducts() {
+    async fetchAdminAllProducts(silent = false) {
         try {
             const res = await fetch(`${API}/admin/products`, { headers: authHeaders() });
             if (res.ok) {
@@ -1175,7 +1349,7 @@ export const State = {
         return null;
     },
     // --- Store Management ---
-    async fetchStoreData() {
+    async fetchStoreData(silent = false) {
         try {
             const res = await fetch(`${API}/store`, { headers: authHeaders() });
             if (!res.ok) throw new Error('Failed to fetch store data');
@@ -1189,7 +1363,7 @@ export const State = {
         }
     },
 
-    async fetchDropshipperOrders() {
+    async fetchDropshipperOrders(silent = false) {
         try {
             // Updated to use the shared supplier/business endpoint
             const res = await fetch(`${API}/supplier/orders`, { headers: authHeaders() });
@@ -1212,7 +1386,7 @@ export const State = {
         return [];
     },
 
-    async fetchDropshipperStats() {
+    async fetchDropshipperStats(silent = false) {
         try {
             // Updated to use the shared supplier/business endpoint
             const res = await fetch(`${API}/supplier/stats`, { headers: authHeaders() });
@@ -1301,7 +1475,7 @@ export const State = {
     },
 
     // --- Financial Management ---
-    async fetchDropshipperWallet() {
+    async fetchDropshipperWallet(silent = false) {
         try {
             const res = await fetch(`${API}/finance/wallet`, { headers: authHeaders() });
             if (res.ok) {
@@ -1394,6 +1568,162 @@ export const State = {
             console.error('Fetch payout history error:', err);
         }
         return [];
+    },
+
+    // --- Marketing & Coupon Management ---
+    async fetchMarketingData() {
+        try {
+            const res = await fetch(`${API}/admin/marketing/analytics`, { headers: authHeaders() });
+            if (res.ok) {
+                const data = await res.json();
+                this._state.marketingStats = data;
+                this._state.campaigns = data.campaigns || [];
+                this._persistNonSensitive();
+                return data;
+            }
+        } catch (err) {
+            console.error('Fetch marketing stats error:', err);
+        }
+        return null;
+    },
+
+    async fetchCoupons() {
+        try {
+            const res = await fetch(`${API}/admin/coupons`, { headers: authHeaders() });
+            if (res.ok) {
+                const data = await res.json();
+                this._state.coupons = data;
+                this._persistNonSensitive();
+                return data;
+            }
+        } catch (err) {
+            console.error('Fetch coupons error:', err);
+        }
+        return [];
+    },
+
+    async toggleCouponStatus(id) {
+        try {
+            const res = await fetch(`${API}/admin/coupons/${id}/toggle`, {
+                method: 'PATCH',
+                headers: authHeaders()
+            });
+            if (res.ok) {
+                this.notify('Coupon status updated', 'success');
+                await this.fetchCoupons();
+                return true;
+            }
+        } catch (err) {
+            this.notify('Failed to update coupon', 'error');
+        }
+        return false;
+    },
+
+    async deleteCoupon(id) {
+        try {
+            const res = await fetch(`${API}/admin/coupons/${id}`, {
+                method: 'DELETE',
+                headers: authHeaders()
+            });
+            if (res.ok) {
+                this.notify('Coupon deleted', 'success');
+                await this.fetchCoupons();
+                return true;
+            }
+        } catch (err) {
+            this.notify('Failed to delete coupon', 'error');
+        }
+        return false;
+    },
+
+    // --- Supplier Product Management ---
+    async createSupplierProduct(productData) {
+        try {
+            const formData = new FormData();
+            Object.keys(productData).forEach(key => {
+                if (key === 'images' && productData.images instanceof FileList) {
+                    Array.from(productData.images).forEach(file => formData.append('images', file));
+                } else {
+                    formData.append(key, productData[key]);
+                }
+            });
+
+            const res = await fetch(`${API}/products`, {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${Auth.getToken()}` },
+                body: formData
+            });
+
+            if (res.ok) {
+                this.notify('Product created successfully', 'success');
+                await this.fetchSupplierProducts(); // Use supplier specific fetch
+                if (window.Router) window.Router.handleRoute(); // Force re-render with skeleton
+                return true;
+            } else {
+                const err = await res.json();
+                this.notify(err.message || 'Failed to create product', 'error');
+            }
+        } catch (err) {
+            console.error('Create product error:', err);
+            this.notify('Network error creating product', 'error');
+        }
+        return false;
+    },
+
+    async updateSupplierProduct(id, productData) {
+        try {
+            const formData = new FormData();
+            Object.keys(productData).forEach(key => {
+                if (key === 'images' && productData.images instanceof FileList) {
+                    Array.from(productData.images).forEach(file => formData.append('images', file));
+                } else if (productData[key] !== undefined) {
+                    formData.append(key, productData[key]);
+                }
+            });
+
+            const res = await fetch(`${API}/products/${id}`, {
+                method: 'PUT',
+                headers: { 'Authorization': `Bearer ${Auth.getToken()}` },
+                body: formData
+            });
+
+            if (res.ok) {
+                this.notify('Product updated successfully', 'success');
+                await this.fetchSupplierProducts();
+                if (window.Router) window.Router.handleRoute();
+                return true;
+            } else {
+                const err = await res.json();
+                this.notify(err.message || 'Failed to update product', 'error');
+            }
+        } catch (err) {
+            console.error('Update product error:', err);
+            this.notify('Network error updating product', 'error');
+        }
+        return false;
+    },
+
+    async deleteSupplierProduct(id) {
+        try {
+            const res = await fetch(`${API}/products/${id}`, {
+                method: 'DELETE',
+                headers: authHeaders()
+            });
+
+            if (res.ok) {
+                this.notify('Product deleted successfully', 'success');
+                await this.fetchSupplierProducts();
+                if (window.Router) window.Router.handleRoute();
+                return true;
+            } else {
+                const err = await res.json();
+                this.notify(err.message || 'Failed to delete product', 'error');
+            }
+        } catch (err) {
+            console.error('Delete product error:', err);
+            this.notify('Network error deleting product', 'error');
+        }
+        return false;
     }
 };
 

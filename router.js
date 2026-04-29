@@ -19,12 +19,12 @@ export const Router = {
     },
 
     // Handle route changes
-    async handleRoute() {
+    async handleRoute(silent = false) {
         let hash = window.location.hash.slice(1) || '/';
 
-        // Show Skeleton immediately
+        // Show Skeleton immediately only if not silent
         const contentArea = document.getElementById('app-viewport') || document.body;
-        if (contentArea && window.Components && window.Components.PageSkeleton) {
+        if (!silent && contentArea && window.Components && window.Components.PageSkeleton) {
             contentArea.innerHTML = window.Components.PageSkeleton();
             if (window.lucide) lucide.createIcons();
         }
@@ -50,8 +50,8 @@ export const Router = {
             this.navigate('/404');
         }
 
-        // Scroll to top
-        window.scrollTo(0, 0);
+        // Scroll to top only if not silent
+        if (!silent) window.scrollTo(0, 0);
 
         // Update mobile components
         if (window.updateMobileUI) {
@@ -126,8 +126,16 @@ export const Router = {
     },
 
     // Refresh current route
-    refresh() {
-        this.handleRoute();
+    refresh(silent = false) {
+        this.handleRoute(silent);
+    },
+
+    // Navigate to route silently (no scroll to top, no skeleton)
+    silentNavigate(path) {
+        window.location.hash = path;
+        // The hashchange listener will trigger handleRoute(false) by default, 
+        // so for a true silent navigation we might need to skip history and call handler directly
+        // but for now, we'll just use refresh(true) after a state change.
     },
 
     // Go back

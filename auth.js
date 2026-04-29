@@ -11,6 +11,15 @@ export const Auth = {
         // No longer dependent on local users array, but we can keep this empty init if needed
     },
 
+    decodeToken: (token) => {
+        try {
+            const payload = JSON.parse(atob(token.split('.')[1]));
+            return payload;
+        } catch {
+            return null;
+        }
+    },
+
     // Login function
     login: async (email, password) => {
         try {
@@ -87,6 +96,9 @@ export const Auth = {
 
             if (response.ok) {
                 Auth.setUserSession(data.role, data);
+                if (window.State) {
+                    window.State.setUser(data.role, data);
+                }
                 return { success: true, message: data.message, user: data };
             } else {
                 return { success: false, message: data.message };
@@ -209,12 +221,37 @@ export const Auth = {
 
     isLoggedIn: () => {
         const session = Auth.getUserSession();
-        return !!(session && session.token);
+        if (!session || !session.token) return false;
+        
+        const payload = Auth.decodeToken(session.token);
+        if (!payload || !payload.exp) return false;
+        
+        // exp is in seconds, Date.now() is in ms
+        return (payload.exp * 1000) > Date.now();
+    },
+
+    checkExpiry: async () => {
+        const session = Auth.getUserSession();
+        if (!session || !session.token) return; // No session, nothing to check
+        
+        const payload = Auth.decodeToken(session.token);
+        if (!payload || !payload.exp) return;
+        
+        // Token expires within 60 seconds
+        const isExpired = (payload.exp * 1000) <= Date.now();
+        if (isExpired) {
+            console.warn('[Auth] Session token expired, logging out.');
+            Auth.logout();
+        }
     },
 
     logout: () => {
-        document.cookie = "xperince_user=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
-        localStorage.removeItem('xperince_session');
+        if (window.State) {
+            window.State.logout();
+        } else {
+            document.cookie = "xperince_user=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+            localStorage.removeItem('xperince_session');
+        }
         // Don't reload - let the app handle UI updates
     },
 

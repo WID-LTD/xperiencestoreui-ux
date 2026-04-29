@@ -3,8 +3,8 @@
  * Library of reusable components for consistent UI
  */
 
-import { State } from './state.js';
-import { Router } from './router.js';
+import { State } from './state.js?v=3.1.5';
+import { Router } from './router.js?v=3.1.5';
 
 export const Components = {
     // Search Suggestions Component (Glassmorphism)
@@ -27,7 +27,7 @@ export const Components = {
                     ${results.map(item => `
                         <div onclick="window.handleSuggestionClick('${item.type}', '${item.id || item.slug}')" class="p-3 hover:bg-blue-50/80 cursor-pointer flex items-center gap-4 group transition-all">
                             <div class="w-10 h-10 rounded-lg overflow-hidden bg-slate-100 flex-shrink-0">
-                                <img src="${item.image || 'assets/placeholder.png'}" class="w-full h-full object-cover group-hover:scale-110 transition-transform" onerror="this.src='https://ui-avatars.com/api/?name=${item.name}&background=random'">
+                                <img loading="lazy" src="${item.image || 'assets/placeholder.png'}" class="w-full h-full object-cover group-hover:scale-110 transition-transform" onerror="this.src='https://ui-avatars.com/api/?name=${item.name}&background=random'">
                             </div>
                             <div class="flex-1 min-w-0">
                                 <h4 class="text-sm font-bold text-slate-800 truncate">${item.name.replace(new RegExp(query, 'gi'), match => `<span class="text-blue-600 underline">${match}</span>`)}</h4>
@@ -108,25 +108,31 @@ export const Components = {
                         </div>
                         <span class="text-xs text-slate-400">(${product.reviews})</span>
                     </div>
-                    <div class="flex justify-between items-center">
+                    <div class="mt-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                         <div>
                             ${state.userRole === 'business' ? `
-                                <p class="text-xs text-slate-400 line-through">${State.formatCurrency(product.price)}</p>
+                                <p class="text-[10px] text-slate-400 line-through">${State.formatCurrency(product.price)}</p>
                                 <p class="text-xl font-bold text-blue-600">${State.formatCurrency(price)}</p>
                             ` : `
-                                <p class="text-xl font-bold text-slate-800">${State.formatCurrency(price)}</p>
+                                <p class="text-xl font-bold text-slate-900">${State.formatCurrency(price)}</p>
                             `}
                         </div>
+                        
                         ${showAddToCart ? `
-                            <div class="flex gap-2">
-                                <button onclick="event.stopPropagation(); Components.addToCartAction(${product.id})" class="bg-blue-600 text-white p-3 rounded-lg hover:bg-blue-700 transition-all">
-                                    <i data-lucide="shopping-cart" class="w-4 h-4"></i>
+                            <div class="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+                                <button onclick="event.stopPropagation(); Components.addToCartAction(${product.id})" class="bg-blue-600 text-white py-3 sm:px-4 rounded-2xl hover:bg-blue-700 transition-all flex items-center justify-center shadow-lg shadow-blue-100 gap-2" title="Add to Cart">
+                                    <i data-lucide="shopping-cart" class="w-5 h-5"></i>
+                                    <span class="sm:hidden font-bold">Add to Cart</span>
                                 </button>
                                 ${state.userRole === 'dropshipper' ? `
-                                    <button onclick="event.stopPropagation(); State.addToStore(${product.id})" class="bg-purple-600 text-white p-3 rounded-lg hover:bg-purple-700 transition-all" title="Add to Store">
-                                        <i data-lucide="plus" class="w-4 h-4"></i>
+                                    <button onclick="event.stopPropagation(); State.addToStore(${product.id})" class="bg-purple-600 text-white p-3 rounded-2xl hover:bg-purple-700 transition-all shadow-lg shadow-purple-100" title="Add to Store">
+                                        <i data-lucide="plus" class="w-5 h-5"></i>
                                     </button>
                                 ` : ''}
+                                <button onclick="event.stopPropagation(); Components.buyNowAction(${product.id})" class="bg-slate-900 text-white py-3 sm:px-6 rounded-2xl text-xs font-bold hover:bg-slate-800 transition-all shadow-xl shadow-slate-200 flex items-center justify-center gap-2">
+                                    <i data-lucide="zap" class="w-4 h-4 text-amber-400 fill-amber-400"></i>
+                                    Buy Now
+                                </button>
                             </div>
                         ` : ''}
                     </div>
@@ -154,9 +160,12 @@ export const Components = {
                         </div>
                         <div class="h-3 w-8 bg-slate-200 rounded"></div>
                     </div>
-                    <div class="flex justify-between items-center">
-                        <div class="h-6 w-20 bg-slate-200 rounded"></div>
-                        <div class="w-10 h-10 bg-slate-200 rounded-lg"></div>
+                    <div class="mt-4 space-y-3">
+                        <div class="flex items-center justify-between">
+                            <div class="h-6 w-24 bg-slate-200 rounded"></div>
+                            <div class="w-10 h-10 bg-slate-200 rounded-xl"></div>
+                        </div>
+                        <div class="h-10 w-full bg-slate-100 rounded-xl"></div>
                     </div>
                 </div>
             </div>
@@ -275,7 +284,7 @@ export const Components = {
         return `
             <div class="glass-card p-6 rounded-2xl hover:shadow-xl transition-all cursor-pointer" onclick="Router.navigate('/supplier/${supplier.id}')">
                 <div class="flex items-start gap-4">
-                    <img src="${supplier.logo}" alt="${supplier.name}" class="w-16 h-16 rounded-lg">
+                    <img onerror="this.src='/assets/placeholder.png'; this.onerror=null;" loading="lazy" src="${supplier.logo}" alt="${supplier.name}" class="w-16 h-16 rounded-lg">
                     <div class="flex-1">
                         <div class="flex items-start justify-between">
                             <div>
@@ -373,7 +382,7 @@ export const Components = {
         return `
             <div id="full-page-loader" class="fixed inset-0 bg-slate-50/90 backdrop-blur-sm z-[5000] flex flex-col items-center justify-center transition-opacity duration-500">
                 <div class="relative w-32 h-32 mb-8 animate-pulse-glow rounded-full flex items-center justify-center bg-white shadow-xl border border-slate-100">
-                    <img src="assets/logo.png" alt="Xperiencestore Logo" class="w-16 h-16 object-contain glass-shine-effect">
+                    <img loading="lazy" src="assets/logo.png" alt="Xperiencestore Logo" class="w-16 h-16 object-contain glass-shine-effect">
                 </div>
                 <h2 class="text-2xl font-bold text-slate-800 tracking-tight">${message}</h2>
                 <div class="mt-6 flex gap-2">
@@ -400,7 +409,7 @@ export const Components = {
                 <!-- Central Logo Focal Point -->
                 <div class="flex flex-col items-center justify-center py-20">
                     <div class="relative w-48 h-48 mb-6 opacity-40 grayscale-0 shadow-2xl rounded-full bg-white flex items-center justify-center p-8">
-                        <img src="assets/logo.png" alt="Logo Placeholder" class="w-full h-full object-contain animate-pulse">
+                        <img loading="lazy" src="assets/logo.png" alt="Logo Placeholder" class="w-full h-full object-contain animate-pulse">
                     </div>
                     <div class="w-64 h-4 bg-slate-200 rounded-full"></div>
                 </div>
@@ -561,41 +570,65 @@ export const Components = {
         document.getElementById(id)?.classList.add('hidden');
     },
 
-    toggleWishlist(productId) {
-        const product = window.currentProducts?.find(p => p.id === productId);
+    async toggleWishlist(productId) {
+        const product = (window.currentProducts || []).find(p => p.id === productId) || (State.get().products || []).find(p => p.id === productId);
         if (product) {
-            if (State.isInWishlist(productId)) {
-                State.removeFromWishlist(productId);
+            const isInWishlist = State.isInWishlist(productId);
+            if (isInWishlist) {
+                await State.removeFromWishlist(productId);
             } else {
-                State.addToWishlist(product);
+                await State.addToWishlist(product);
             }
-            // Trigger re-render
-            if (window.currentRenderFunction) {
+            
+            // Partial UI update
+            if (window.updateWishlistUI) {
+                window.updateWishlistUI(productId, !isInWishlist);
+            } else if (window.currentRenderFunction) {
                 window.currentRenderFunction();
             }
         }
     },
 
-    addToCartAction(productId) {
+
+    async addToCartAction(productId) {
         const qtyInput = document.getElementById('product-qty-input');
         const qty = qtyInput ? parseInt(qtyInput.value) || 1 : 1;
-        const product = window.currentProducts?.find(p => p.id === productId);
+        const product = (window.currentProducts || []).find(p => p.id === productId);
         if (product) {
-            State.addToCart(product, qty);
-            // Update cart badge
+            await State.addToCart(product, qty);
             this.updateCartBadge();
-            this.showNotification(`Added ${qty} ${product.name} to cart`, 'success');
+            // showNotification is already handled inside State.addToCart logic or below
         }
     },
 
-    buyNowAction(productId) {
+    async buyNowAction(productId) {
         const qtyInput = document.getElementById('product-qty-input');
         const qty = qtyInput ? parseInt(qtyInput.value) || 1 : 1;
-        const product = window.currentProducts?.find(p => p.id === productId);
+        
+        // Robust product lookup: current page context -> all state products
+        let product = (window.currentProducts || []).find(p => p.id === productId);
+        if (!product) {
+            product = (State.get().products || []).find(p => p.id === productId);
+        }
+        
         if (product) {
-            State.addToCart(product, qty);
-            this.updateCartBadge();
+            await State.addToCart(product, qty);
+            // After adding to cart, update badge and redirect
+            if (State.get().cartPageOpen) {
+                 // If already on cart page, just update the UI (rare case for buy now)
+                 window.updateCartUI?.();
+            }
             Router.navigate('/checkout');
+        } else {
+            // Fallback: if product isn't loaded yet, we could fetch it, but usually it's in state
+            console.warn(`[BuyNow] Product ${productId} not found in state.`);
+            // Optionally fetch and then add
+            const res = await fetch(`${window.API_BASE}/api/products/${productId}`);
+            if (res.ok) {
+                const p = await res.json();
+                await State.addToCart(p, qty);
+                Router.navigate('/checkout');
+            }
         }
     },
 
@@ -609,7 +642,8 @@ export const Components = {
     // --- Mobile Components ---
 
     BottomNav() {
-        const role = State.get().userRole;
+        const rawRole = State.get().userRole || 'consumer';
+        const role = rawRole.toLowerCase().replace(/\s+/g, ''); // normalize 'drop shipper' -> 'dropshipper'
         const currentPath = Router.getCurrentRoute()?.path || '/';
 
         const navItems = {
@@ -628,6 +662,13 @@ export const Components = {
                 { icon: 'user', label: 'Account', path: '/account' }
             ],
             business: [
+                { icon: 'home', label: 'Home', path: '/' },
+                { icon: 'briefcase', label: 'Suppliers', path: '/business/suppliers' },
+                { icon: 'file-text', label: 'RFQ', path: '/business/rfq' },
+                { icon: 'shopping-bag', label: 'Quotes', path: '/business/quotes' },
+                { icon: 'user', label: 'Account', path: '/account' }
+            ],
+            bussiness: [ // Handling typo
                 { icon: 'home', label: 'Home', path: '/' },
                 { icon: 'briefcase', label: 'Suppliers', path: '/business/suppliers' },
                 { icon: 'file-text', label: 'RFQ', path: '/business/rfq' },
@@ -659,12 +700,17 @@ export const Components = {
 
         const activeItems = navItems[role] || navItems.consumer;
 
-        return activeItems.map(item => `
-            <a href="#${item.path}" class="mobile-nav-item ${currentPath === item.path ? 'active' : ''}">
-                <i data-lucide="${item.icon}" class="w-5 h-5"></i>
+        return activeItems.map(item => {
+            const isActive = item.path === '/' ? currentPath === '/' : currentPath.startsWith(item.path);
+            return `
+            <a href="#${item.path}" class="mobile-nav-item ${isActive ? 'active' : ''}">
+                <div class="nav-icon-wrap">
+                    <i data-lucide="${item.icon}" class="w-5 h-5"></i>
+                </div>
                 <span>${item.label}</span>
             </a>
-        `).join('');
+            `;
+        }).join('');
     },
 
     MobileMenu() {
@@ -697,6 +743,19 @@ export const Components = {
                     `).join('')}
                 </div>
 
+                ${State.get().currentUser ? `
+                    <div class="mt-auto pt-6 border-t border-slate-100">
+                        <button onclick="Auth.logout(); setTimeout(() => { window.location.hash = '#/'; window.location.reload(); }, 500);" class="w-full flex items-center gap-4 p-4 rounded-xl text-red-600 font-bold hover:bg-red-50 transition-all">
+                            <i data-lucide="log-out" class="w-5 h-5"></i>
+                            <span>Logout</span>
+                        </button>
+                    </div>
+                ` : `
+                    <div class="mt-auto pt-6 border-t border-slate-100 grid grid-cols-2 gap-3">
+                        <a href="#/login" onclick="Components.toggleMobileMenu()" class="flex items-center justify-center p-4 rounded-xl bg-blue-600 text-white font-bold text-sm">Login</a>
+                        <a href="#/register" onclick="Components.toggleMobileMenu()" class="flex items-center justify-center p-4 rounded-xl bg-slate-100 text-slate-800 font-bold text-sm">Join</a>
+                    </div>
+                `}
             </div>
         `;
     },
@@ -732,6 +791,62 @@ export const Components = {
     toggleMobileMenu() {
         const menu = document.getElementById('mobile-side-menu');
         menu.classList.toggle('active');
+    },
+
+    // "More to Love" Section (Horizontal Scroll)
+    MoreToLoveSection(products) {
+        if (!products || products.length === 0) return '';
+        
+        const displayProducts = products.slice(0, 10);
+        
+        return `
+            <div class="mt-16 mb-8">
+                <div class="flex items-center justify-between mb-6">
+                    <h3 class="text-2xl font-bold text-slate-800">More to Love</h3>
+                    <a href="#/products" class="text-blue-600 font-bold hover:underline text-sm">View All</a>
+                </div>
+                <div class="relative group">
+                    <div class="flex overflow-x-auto gap-6 pb-6 no-scrollbar snap-x scroll-smooth">
+                        ${displayProducts.map(product => `
+                            <div class="min-w-[200px] sm:min-w-[240px] snap-start">
+                                ${this.ProductCard(product, { showAddToCart: false, showQuickView: true })}
+                            </div>
+                        `).join('')}
+                    </div>
+                    <!-- Navigation Hints -->
+                    <div class="absolute inset-y-0 left-0 w-12 bg-gradient-to-r from-slate-50 to-transparent pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                    <div class="absolute inset-y-0 right-0 w-12 bg-gradient-to-l from-slate-50 to-transparent pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                </div>
+            </div>
+        `;
+    },
+
+    // Random Auto-scroll Product Grid for Hero
+    RandomProductScroll(products) {
+        if (!products || products.length === 0) {
+            return `<div class="h-48 md:h-64 w-full bg-blue-100/50 rounded-2xl animate-pulse"></div>`;
+        }
+        
+        // Shuffle and take 6-8 products
+        const shuffled = [...products].sort(() => 0.5 - Math.random()).slice(0, 8);
+        
+        return `
+            <div class="relative w-full overflow-hidden rounded-2xl h-48 md:h-64 group shadow-2xl">
+                <div class="flex animate-infinite-scroll gap-4 p-2">
+                    ${shuffled.map(p => `
+                        <a href="#/product/${p.id}" class="flex-shrink-0 w-32 md:w-40 h-full">
+                            <img loading="lazy" src="${State.getMediaUrl(p.id, 0)}" class="w-full h-full object-cover rounded-xl shadow-lg border-2 border-white/20 hover:scale-105 transition-transform" onerror="this.src='/assets/placeholder.png'">
+                        </a>
+                    `).join('')}
+                    <!-- Duplicate for seamless scroll -->
+                    ${shuffled.map(p => `
+                        <a href="#/product/${p.id}" class="flex-shrink-0 w-32 md:w-40 h-full">
+                            <img loading="lazy" src="${State.getMediaUrl(p.id, 0)}" class="w-full h-full object-cover rounded-xl shadow-lg border-2 border-white/20 hover:scale-105 transition-transform" onerror="this.src='/assets/placeholder.png'">
+                        </a>
+                    `).join('')}
+                </div>
+            </div>
+        `;
     },
 
     // Toggle password visibility helper
@@ -857,6 +972,50 @@ export const Components = {
             localStorage.setItem(countKey, (count + 1).toString());
             if (window.lucide) lucide.createIcons();
         }
+    },
+
+    ConfirmModal(title, message, onConfirm, confirmText = 'Confirm', type = 'danger') {
+        const id = `confirm-modal-${Date.now()}`;
+        const accentColor = type === 'danger' ? 'red' : 'blue';
+        const icon = type === 'danger' ? 'alert-triangle' : 'help-circle';
+
+        const modalHtml = `
+            <div id="${id}" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[10000] flex items-center justify-center p-4 animate-in fade-in">
+                <div class="bg-white rounded-[2rem] p-8 max-w-sm w-full shadow-2xl transform transition-all animate-up">
+                    <div class="w-16 h-16 bg-${accentColor}-100 rounded-2xl flex items-center justify-center text-${accentColor}-600 mb-6 mx-auto">
+                        <i data-lucide="${icon}" class="w-8 h-8"></i>
+                    </div>
+                    
+                    <h2 class="text-xl font-bold text-center text-slate-800 mb-2">${title}</h2>
+                    <p class="text-sm text-center text-slate-500 mb-8 leading-relaxed">${message}</p>
+                    
+                    <div class="flex flex-col gap-3">
+                        <button id="${id}-confirm" class="w-full bg-${accentColor}-600 text-white py-4 rounded-xl font-bold hover:bg-${accentColor}-700 transition-all shadow-lg shadow-${accentColor}-200">${confirmText}</button>
+                        <button id="${id}-cancel" class="w-full py-3 text-slate-400 text-sm font-bold hover:text-slate-600 transition-all">Cancel</button>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+        if (window.lucide) lucide.createIcons();
+
+        const modalEl = document.getElementById(id);
+        const confirmBtn = document.getElementById(`${id}-confirm`);
+        const cancelBtn = document.getElementById(`${id}-cancel`);
+
+        const close = () => {
+            modalEl.classList.add('opacity-0', 'scale-95');
+            setTimeout(() => modalEl.remove(), 200);
+        };
+
+        confirmBtn.onclick = () => {
+            onConfirm();
+            close();
+        };
+
+        cancelBtn.onclick = close;
+        modalEl.onclick = (e) => { if (e.target === modalEl) close(); };
     }
 };
 

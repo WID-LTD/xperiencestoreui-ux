@@ -3,14 +3,14 @@
  * Wires together router, state, pages, and components
  */
 
-import { Auth } from './auth.js';
-import { Router } from './router.js';
-import { State } from './state.js';
-import { Data } from './data.js';
-import { Components } from './components.js';
-import { Pages } from './pages.js';
-import { Payment } from './payment.js';
-import { PaymentCheckoutModal } from './paymentModal.js';
+import { Auth } from './auth.js?v=3.1.5';
+import { Router } from './router.js?v=3.1.5';
+import { State } from './state.js?v=3.1.5';
+import { Data } from './data.js?v=3.1.5';
+import { Components } from './components.js?v=3.1.5';
+import { Pages } from './pages.js?v=3.1.5';
+import { Payment } from './payment.js?v=3.1.5';
+import { PaymentCheckoutModal } from './paymentModal.js?v=3.1.5';
 
 
 // Initialize application
@@ -25,12 +25,40 @@ function setupChat() {
 // Global helper to prevent ReferenceErrors
 window.isLoggedIn = () => Auth.isLoggedIn();
 
+// Expose functions to window EARLY for State.set visibility
+window.updateMobileUI = updateMobileUI;
+window.updateUserUI = updateUserUI;
+window.updateNotificationsUI = updateNotificationsUI;
+window.Router = Router;
+window.State = State;
+window.Auth = Auth;
+window.Pages = Pages;
+window.Data = Data;
+window.Components = Components;
+
 async function initApp() {
     // Initialize state
     State.init();
 
     // Set user role from session
     const userSession = Auth.getUserSession();
+    
+    // Check Auth and Decouple status
+    await Auth.checkExpiry();
+
+    // Initialize Chat System
+    if (window.Chat) window.Chat.init();
+
+    // Check if user is logged in
+    if (userSession && userSession.token && !Auth.isLoggedIn()) {
+        Auth.logout();
+        Router.navigate('/login');
+        if (window.Components && window.Components.showNotification) {
+            Components.showNotification('Your session has expired. Please log in again.', 'warning');
+        }
+        return; // Stop initialization
+    }
+
     const userRole = userSession?.role || 'consumer';
     State.set({ userRole });
 
@@ -145,18 +173,18 @@ function startDashboardPolling() {
         console.log(`[POLLING] Refreshing data for ${userRole}...`);
 
         if (userRole === 'supplier') {
-            dataFetches.push(State.fetchSupplierStats());
-            dataFetches.push(State.fetchSupplierOrders());
+            dataFetches.push(State.fetchSupplierStats(true));
+            dataFetches.push(State.fetchSupplierOrders(true));
         } else if (userRole === 'warehouse') {
-            dataFetches.push(State.fetchInventory());
-            dataFetches.push(State.fetchOrders());
+            dataFetches.push(State.fetchInventory(true));
+            dataFetches.push(State.fetchOrders(true));
         } else if (userRole === 'admin') {
-            dataFetches.push(State.fetchAdminStats());
-            dataFetches.push(State.fetchAdminOrders());
+            dataFetches.push(State.fetchAdminStats(true));
+            dataFetches.push(State.fetchAdminOrders(true));
         } else if (userRole === 'dropshipper') {
-            dataFetches.push(State.fetchDropshipperStats());
-            dataFetches.push(State.fetchDropshipperOrders());
-            dataFetches.push(State.fetchDropshipperWallet());
+            dataFetches.push(State.fetchDropshipperStats(true));
+            dataFetches.push(State.fetchDropshipperOrders(true));
+            dataFetches.push(State.fetchDropshipperWallet(true));
         }
 
         // Always fetch notifications
@@ -166,12 +194,18 @@ function startDashboardPolling() {
             await Promise.allSettled(dataFetches);
             // Re-render if we are on a relevant dashboard page
             const currentRoute = Router.getCurrentRoute();
-            if (currentRoute && (
-                currentRoute.startsWith('/supplier') || 
-                currentRoute.startsWith('/admin') || 
-                currentRoute.startsWith('/warehouse') || 
-                currentRoute.startsWith('/dropshipper') ||
-                currentRoute === '/notifications'
+            const isInputPage = currentRoute?.path?.includes('/add') || 
+                               currentRoute?.path?.includes('/edit') || 
+                               currentRoute?.path?.includes('/create');
+            
+            const isCatalogPage = currentRoute?.path === '/supplier/products';
+
+            if (currentRoute && currentRoute.path && !isInputPage && !isCatalogPage && (
+                currentRoute.path.startsWith('/supplier') || 
+                currentRoute.path.startsWith('/admin') || 
+                currentRoute.path.startsWith('/warehouse') || 
+                currentRoute.path.startsWith('/dropshipper') ||
+                currentRoute.path === '/notifications'
             )) {
                 Router.handleRoute();
             }
@@ -410,11 +444,17 @@ function setupNavigation() {
         `).join('');
     }
 
-    // Advanced Search & Suggestions
-    const searchInput = document.getElementById('global-search-input');
-    const suggestionsContainer = document.getElementById('search-suggestions');
+    // Advanced High-Performance Responsive Search & Suggestions
+    const searchWrappers = [
+        { input: document.getElementById('global-search-input'), sugg: document.getElementById('search-suggestions') },
+        { input: document.getElementById('mobile-search-input'), sugg: document.getElementById('mobile-search-suggestions') }
+    ];
 
-    if (searchInput) {
+    searchWrappers.forEach(wrapper => {
+        const searchInput = wrapper.input;
+        const suggestionsContainer = wrapper.sugg;
+        if (!searchInput || !suggestionsContainer) return;
+
         let debounceTimer;
 
         searchInput.addEventListener('input', (e) => {
@@ -429,38 +469,83 @@ function setupNavigation() {
             debounceTimer = setTimeout(() => {
                 const products = State.get().products || [];
                 
-                // Advanced Smart Searching Algorithm (Weighted results)
-                const results = products.map(p => {
-                    let weight = 0;
-                    const name = p.name.toLowerCase();
-                    const cat = (p.category || '').toLowerCase();
-                    const desc = (p.description || '').toLowerCase();
+                // --- 1. Pre-computation (Lazy Indexing) ---
+                if (products.length > 0 && !products[0]._searchTerms) {
+                    for (let i = 0; i < products.length; i++) {
+                        const p = products[i];
+                        const name = (p.name || '').toLowerCase();
+                        const cat = (p.category || '').toLowerCase();
+                        const desc = (p.description || '').toLowerCase();
+                        // One giant string index for ultra-fast token matching
+                        products[i]._searchTerms = `${name} ${cat} ${desc}`;
+                        products[i]._nameLower = name;
+                        products[i]._catLower = cat;
+                    }
+                }
 
-                    if (name === query) weight += 100;
-                    else if (name.startsWith(query)) weight += 50;
-                    else if (name.includes(query)) weight += 20;
+                // --- 2. Tokenization & Token-based fast exclusion ---
+                const tokens = query.split(/\\s+/).filter(t => t.length > 0);
+                const matches = [];
+
+                // --- 3. High-Performance Loop ---
+                for (let i = 0; i < products.length; i++) {
+                    const p = products[i];
+                    // Fuzzy rejection: Check how many tokens match the index. Skip only if ZERO tokens match.
+                    let matchedTokensCount = 0;
+                    for (let t = 0; t < tokens.length; t++) {
+                        if (p._searchTerms.includes(tokens[t])) {
+                            matchedTokensCount++;
+                        }
+                    }
+                    // Fuzzy percentage matching logic based on USER SPECIFICATION:
+                    // If matchedTokensCount is at least 50% of the total tokens, rank it as 100% match.
+                    // If matchedTokensCount is at least 25%, rank it lower.
+                    const matchRatio = tokens.length > 0 ? (matchedTokensCount / tokens.length) : 0;
                     
-                    if (cat.includes(query)) weight += 15;
-                    if (desc.includes(query)) weight += 5;
+                    if (matchRatio < 0.25) continue; // Reject if under 25% match rate
 
-                    return { ...p, weight };
-                })
-                .filter(p => p.weight > 0)
-                .sort((a, b) => b.weight - a.weight)
-                .slice(0, 6)
-                .map(p => ({
-                    id: p.id,
-                    name: p.name,
-                    image: State.getMediaUrl(p.id, 0),
-                    type: 'product',
-                    category: p.category,
-                    weight: p.weight
-                }));
+                    let weight = 0;
+                    
+                    // Massive ranking boost based on percentage hitting thresholds
+                    if (matchRatio >= 0.50) weight += 1000; // Rank as 100%
+                    else if (matchRatio >= 0.25) weight += 200; // Still passes, rank lower
+                     
+                    weight += Math.pow(matchedTokensCount, 2) * 5; 
+
+                    // Full query exact/starts-with matching (Highly rewarded)
+                    if (p._nameLower === query) weight += 500;
+                    else if (p._nameLower.startsWith(query)) weight += 100;
+                    else if (p._nameLower.includes(query)) weight += 30;
+
+                    // Individual token hit distributions
+                    for(let t = 0; t < tokens.length; t++) {
+                        if (p._nameLower.includes(tokens[t])) weight += 15;
+                        if (p._catLower.includes(tokens[t])) weight += 5;
+                    }
+
+                    if (weight > 0) {
+                        matches.push({
+                            id: p.id,
+                            name: p.name,
+                            image: State.getMediaUrl(p.id, 0),
+                            type: 'product',
+                            category: p.category, 
+                            weight: weight
+                        });
+                    }
+                }
+
+                // --- 4. Sort and Slice ---
+                const results = matches.sort((a, b) => b.weight - a.weight).slice(0, 6);
 
                 suggestionsContainer.innerHTML = Components.SearchSuggestions(results, query);
+                
+                // Force mobile container to appear floating above other elements
+                suggestionsContainer.className = 'absolute top-full left-0 right-0 mt-2 z-[2000] glass-card bg-white/80 backdrop-blur-2xl border border-white/40 shadow-2xl rounded-2xl overflow-hidden animate-in fade-in slide-in-from-top-2 duration-300';
                 suggestionsContainer.classList.remove('hidden');
-                lucide.createIcons();
-            }, 300);
+                
+                if (window.lucide) window.lucide.createIcons();
+            }, 100); // Super fast 100ms debounce due to optimized O(1) skipping
         });
 
         searchInput.addEventListener('keypress', (e) => {
@@ -472,18 +557,24 @@ function setupNavigation() {
                 }
             }
         });
+    });
 
-        // Hide suggestions when clicking outside
-        document.addEventListener('click', (e) => {
-            if (!searchInput.contains(e.target) && !suggestionsContainer.contains(e.target)) {
-                suggestionsContainer.classList.add('hidden');
+    // Hide suggestions when clicking outside
+    document.addEventListener('click', (e) => {
+        searchWrappers.forEach(wrapper => {
+            if (wrapper.input && wrapper.sugg) {
+                if (!wrapper.input.contains(e.target) && !wrapper.sugg.contains(e.target)) {
+                    wrapper.sugg.classList.add('hidden');
+                }
             }
         });
-    }
+    });
 
     // Global helper for suggestions
     window.handleSuggestionClick = (type, id) => {
-        suggestionsContainer.classList.add('hidden');
+        searchWrappers.forEach(wrapper => {
+            if (wrapper.sugg) wrapper.sugg.classList.add('hidden');
+        });
         if (type === 'product') {
             Router.navigate(`/product/${id}`);
         } else if (type === 'category') {
@@ -516,15 +607,52 @@ function setupUserDropdown() {
             e.preventDefault();
             Auth.logout();
             userDropdown.classList.add('hidden');
-            updateUserUI();
             Components.showNotification('Logged out successfully', 'success');
             setTimeout(() => {
-                window.location.hash = '/';
+                window.location.hash = '#/';
                 window.location.reload();
             }, 500);
         };
     }
 }
+
+// Global role switcher handler
+window.switchUserRole = async (newRole) => {
+    const session = Auth.getUserSession();
+    if (!session) return;
+
+    try {
+        Components.showNotification('Switching context...', 'info');
+        const response = await fetch(`${window.API_BASE}/api/auth/switch-role`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${session.token}`
+            },
+            body: JSON.stringify({ newRole })
+        });
+
+        const data = await response.json();
+        if (response.ok) {
+            // Update local session
+            const updatedUser = { ...session, role: newRole };
+            localStorage.setItem('xperience_user', JSON.stringify(updatedUser));
+            
+            Components.showNotification(`Switched to ${newRole.toUpperCase()} view`, 'success');
+            
+            // Reload to apply role-specific routes and UI
+            setTimeout(() => {
+                window.location.hash = '#/';
+                window.location.reload();
+            }, 1000);
+        } else {
+            Components.showNotification(data.message || 'Failed to switch role', 'error');
+        }
+    } catch (err) {
+        console.error('Role switch error:', err);
+        Components.showNotification('Connection error during role switch', 'error');
+    }
+};
 
 function updateUserUI() {
     const session = Auth.getUserSession();
@@ -547,6 +675,12 @@ function updateUserUI() {
         if (isLoggedIn) {
             dropdownGuest.classList.add('hidden');
             dropdownUser.classList.remove('hidden');
+            
+            // Sync role switcher
+            const roleSwitcher = document.getElementById('role-switcher');
+            if (roleSwitcher) {
+                roleSwitcher.value = session.role || 'consumer';
+            }
         } else {
             dropdownGuest.classList.remove('hidden');
             dropdownUser.classList.add('hidden');
@@ -577,6 +711,13 @@ function setupNotifications() {
         });
     }
 
+    // Request native notification permission
+    if ("Notification" in window && Notification.permission === "default") {
+        setTimeout(() => {
+            Notification.requestPermission();
+        }, 5000); // Ask after 5s to avoid annoying user immediately
+    }
+
     // Handle dropdown toggle visibility
     document.addEventListener('click', (e) => {
         if (!wrapper.contains(e.target)) {
@@ -588,9 +729,32 @@ function setupNotifications() {
     updateNotificationsUI();
 
     // Poll for new notifications every 60 seconds
-    setInterval(() => {
+    setInterval(async () => {
         if (window.isLoggedIn()) {
-            State.fetchNotifications().then(() => updateNotificationsUI());
+            const oldNotifications = [...(State.get().notifications || [])];
+            const newNotifications = await State.fetchNotifications();
+            
+            // Check for really new ones (not in old list by ID)
+            const brandNew = newNotifications.filter(n => !oldNotifications.some(old => old.id === n.id));
+            
+            if (brandNew.length > 0) {
+                updateNotificationsUI();
+                
+                // Show native browser notification
+                if ("Notification" in window && Notification.permission === "granted") {
+                    brandNew.forEach(n => {
+                        const nativeNotify = new Notification(n.title, {
+                            body: n.message,
+                            icon: 'assets/favicon.png'
+                        });
+                        nativeNotify.onclick = () => {
+                            window.focus();
+                            window.location.hash = '/notifications';
+                            nativeNotify.close();
+                        };
+                    });
+                }
+            }
         }
     }, 60000);
 }
@@ -638,18 +802,32 @@ function updateNotificationsUI() {
 
 window.markNotificationRead = async (id, event) => {
     event.stopPropagation();
+    const notifications = State.get().notifications || [];
+    const notification = notifications.find(n => n.id === id);
+    
+    // Mark as read in background
     const success = await State.markNotificationAsRead(id);
     if (success) {
         updateNotificationsUI();
+        
+        // Deep-linking logic
+        if (notification && notification.link) {
+            Router.navigate(notification.link);
+        }
     }
 };
 
 function updateMobileUI() {
+    const role = State.get().userRole;
+    console.log('[UI] Updating Mobile Nav for role:', role);
+    
     const bottomNav = document.getElementById('mobile-bottom-nav');
     const sideMenu = document.getElementById('mobile-menu-content');
     
     if (bottomNav) {
+        bottomNav.setAttribute('data-role', role);
         bottomNav.innerHTML = Components.BottomNav();
+        console.log(`[UI] Bottom Nav updated for role: ${role}`);
     }
     
     if (sideMenu) {
@@ -911,14 +1089,6 @@ window.handlePayout = async (e) => {
         submitBtn.textContent = 'Withdraw Now';
     }
 };
-
-// Make Router and State globally available
-window.Router = Router;
-window.State = State;
-window.Auth = Auth;
-window.Pages = Pages;
-window.Data = Data;
-window.Components = Components;
 
 // Initialize Sliders
 window.initPriceSliders = () => {

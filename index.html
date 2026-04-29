@@ -14,15 +14,24 @@
     <script>
       // =============================================
       // API Base Configuration
-      // PRODUCTION: 'https://xperiencestore.onrender.com'
+      // PRODUCTION: 'https://api.xperiencestore.store'
       // =============================================
-      window.API_BASE = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' ? 'http://localhost:5000' : 'https://xperiencestore.onrender.com';
+      window.API_BASE = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' ? 'http://localhost:5050' : 'https://api.xperiencestore.store';
 
       // Helper: builds a full API URL from a relative path like '/api/orders'
       window.apiUrl = (path) => `${window.API_BASE}${path}`;
+      window.LOG_SECRET = 'xperience-log-secret-2026';
       console.log('XperinceStore UI v1.0.1-emergency-fix-applied');
+
+      if ('serviceWorker' in navigator) {
+          window.addEventListener('load', () => {
+              navigator.serviceWorker.register('/sw.js').catch(err => {
+                  console.warn('ServiceWorker registration failed: ', err);
+              });
+          });
+      }
     </script>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Tailwind CDN removed for production -->
     <script type="module" src="logger.js"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <link
@@ -38,19 +47,19 @@
       href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="dist/output.css" />
   </head>
   <body class="bg-slate-50 font-['Inter'] min-h-screen">
     <nav id="main-nav" class="glass-header sticky top-0 w-full z-[1000] bg-white border-b border-slate-200 shadow-sm">
-      <div class="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between gap-4">
+      <div class="max-w-7xl mx-auto px-4 h-20 flex items-center justify-between gap-4">
         <!-- Brand & Hamburger -->
         <div class="flex items-center gap-3">
           <button onclick="Components.toggleMobileMenu()" class="lg:hidden p-2 hover:bg-slate-100 rounded-xl transition-all">
             <i data-lucide="menu" class="w-6 h-6 text-slate-700"></i>
           </button>
-          <div class="flex items-center gap-2 cursor-pointer" onclick="window.location.hash = '/'">
-            <img src="assets/logo.png" alt="X" class="h-8 w-8 object-contain" />
-            <span class="font-bold text-xl text-blue-900 tracking-tight hidden sm:block">Xperince<span class="text-blue-500 font-light">Store</span></span>
+          <div class="flex items-center gap-2 cursor-pointer group" onclick="window.location.hash = '/'">
+            <img src="assets/logo.png" alt="Xperincestore Logo" class="h-10 w-10 sm:h-12 sm:w-12 object-contain transition-transform group-hover:scale-105" />
+            <span class="font-extrabold text-xl sm:text-2xl text-blue-900 tracking-tight hidden sm:block">Xperince<span class="text-blue-600 font-light">Store</span></span>
           </div>
         </div>
 
@@ -77,10 +86,15 @@
           </div>
 
           <!-- Cart Icon -->
-          <div class="relative cursor-pointer p-2 hover:bg-slate-100 rounded-xl transition-all" onclick="window.location.hash = '/cart'">
+          <a href="/chat" id="header-chat-icon" class="relative p-2 hover:bg-slate-100 rounded-full transition-colors hidden">
+            <i data-lucide="message-square" class="w-6 h-6 text-slate-700"></i>
+            <span class="chat-badge absolute top-1 right-1 bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full hidden"></span>
+          </a>
+
+          <a href="/cart" class="relative p-2 hover:bg-slate-100 rounded-full transition-colors">
             <i data-lucide="shopping-cart" class="w-6 h-6 text-slate-700"></i>
             <span class="shopping-cart-badge absolute top-1 right-1 bg-blue-600 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">0</span>
-          </div>
+          </a>
 
           <!-- Notifications -->
           <div class="relative" id="notifications-wrapper">
@@ -118,6 +132,14 @@
                     <p class="text-[10px] text-slate-400 truncate" id="dropdown-user-email"></p>
                  </div>
                  <a href="#/account" class="flex items-center gap-3 p-3 hover:bg-slate-50 rounded-xl transition-all text-sm font-medium">Dashboard</a>
+                 <div class="px-3 py-2 border-t border-slate-50 mt-2">
+                    <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2">Switch Role</p>
+                    <select id="role-switcher" onchange="window.switchUserRole(this.value)" class="w-full bg-slate-50 border-none text-[10px] font-bold rounded-lg p-2 outline-none cursor-pointer">
+                        <option value="consumer">Consumer</option>
+                        <option value="business">Business</option>
+                        <option value="dropshipper">Dropshipper</option>
+                    </select>
+                 </div>
                  <hr class="my-2 border-slate-50">
                  <button id="logout-btn" class="w-full text-left p-3 text-red-600 font-bold text-sm hover:bg-red-50 rounded-xl">Logout</button>
               </div>
@@ -127,10 +149,11 @@
       </div>
 
       <!-- Mobile Search -->
-      <div class="md:hidden px-4 pb-3">
-        <div class="flex items-center bg-slate-100 rounded-xl px-4 py-2 gap-2 border border-slate-200">
+      <div class="md:hidden px-4 pb-3 relative z-50">
+        <div class="flex items-center bg-slate-100 rounded-xl px-4 py-2 gap-2 border border-slate-200 relative">
           <i data-lucide="search" class="w-4 h-4 text-slate-400"></i>
-          <input type="text" placeholder="Search..." class="bg-transparent text-sm outline-none w-full" onkeyup="if(event.key==='Enter') Router.navigate('/search?q='+this.value)">
+          <input type="text" id="mobile-search-input" placeholder="Search..." class="bg-transparent text-sm outline-none w-full" onkeyup="if(event.key==='Enter') Router.navigate('/search?q='+this.value)">
+          <div id="mobile-search-suggestions" class="hidden"></div>
         </div>
       </div>
     </nav>
@@ -143,7 +166,7 @@
     </main>
 
     <!-- Mobile Bottom Navigation -->
-    <div id="mobile-bottom-nav" class="lg:hidden">
+    <div id="mobile-bottom-nav" class="lg:hidden flex flex-row justify-around items-end fixed bottom-0 left-0 right-0 w-full bg-white shadow-[0_-4px_24px_rgba(37,99,235,0.10)] border-t border-blue-100 rounded-t-3xl z-[2000] h-[5.5rem] px-1 pb-3 transition-all duration-300">
         <!-- Injected via Components.BottomNav -->
     </div>
 
@@ -221,7 +244,7 @@
     </div>
 
     <!-- Footer -->
-    <footer class="bg-slate-900 text-white mt-24 px-6 py-12">
+    <footer class="bg-slate-900 text-white mt-24 px-6 py-12 hidden md:block">
       <div class="max-w-7xl mx-auto">
         <div class="grid grid-cols-1 md:grid-cols-4 gap-8 mb-8">
           <!-- Brand -->
@@ -239,32 +262,6 @@
             <p class="text-slate-400 text-sm mb-4">
               The world's first unified multi-tier commerce platform.
             </p>
-            <div class="flex gap-3">
-              <a
-                href="#"
-                class="w-10 h-10 bg-slate-800 rounded-full flex items-center justify-center hover:bg-blue-600 transition-all"
-              >
-                <i data-lucide="twitter" class="w-5 h-5"></i>
-              </a>
-              <a
-                href="#"
-                class="w-10 h-10 bg-slate-800 rounded-full flex items-center justify-center hover:bg-blue-600 transition-all"
-              >
-                <i data-lucide="facebook" class="w-5 h-5"></i>
-              </a>
-              <a
-                href="#"
-                class="w-10 h-10 bg-slate-800 rounded-full flex items-center justify-center hover:bg-blue-600 transition-all"
-              >
-                <i data-lucide="linkedin" class="w-5 h-5"></i>
-              </a>
-              <a
-                href="#"
-                class="w-10 h-10 bg-slate-800 rounded-full flex items-center justify-center hover:bg-blue-600 transition-all"
-              >
-                <i data-lucide="instagram" class="w-5 h-5"></i>
-              </a>
-            </div>
           </div>
 
           <!-- Quick Links -->
@@ -362,6 +359,7 @@
       class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[2000] flex items-center justify-center p-4"
     ></div>
 
-    <script src="script.js" type="module"></script>
-  </body>
+    <script src="script.js?v=3.1.5" type="module"></script>
+      <script src="chat.js"></script>
+</body>
 </html>

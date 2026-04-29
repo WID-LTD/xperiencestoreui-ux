@@ -3,11 +3,12 @@
  * Centralized page rendering for all user types
  */
 
-import { Data } from './data.js';
-import { State } from './state.js';
-import { Router } from './router.js';
-import { Components } from './components.js';
-import { Tracking } from './tracking.js';
+import { Data } from './data.js?v=3.1.5';
+import { State } from './state.js?v=3.1.5';
+import { Router } from './router.js?v=3.1.5';
+import { Components } from './components.js?v=3.1.5';
+import { Tracking } from './tracking.js?v=3.1.5';
+import { Auth } from './auth.js?v=3.1.5';
 
 
 export const Pages = {
@@ -239,7 +240,7 @@ export const Pages = {
                             <div class="space-y-4">
                                 ${order.items.map(item => `
                                     <div class="flex items-center gap-4">
-                                        <img src="${State.getMediaUrl(item.product_id, 0)}" class="w-16 h-16 rounded-lg object-cover">
+                                        <img onerror="this.src='/assets/placeholder.png'; this.onerror=null;" loading="lazy" src="${State.getMediaUrl(item.product_id, 0)}" class="w-16 h-16 rounded-lg object-cover">
                                         <div class="flex-1">
                                             <p class="font-bold">${item.name || 'Product Details'}</p>
                                             <p class="text-xs text-slate-500">Qty: ${item.quantity} × ${State.formatCurrency(item.price)}</p>
@@ -445,12 +446,8 @@ export const Pages = {
                 Components.showNotification('Email verified! Welcome to Xperiencestore 🎉', 'success');
                 const role = result.user?.role || 'consumer';
                 setTimeout(() => {
-                    if (role === 'admin') Router.navigate('/admin/reports');
-                    else if (role === 'consumer') Router.navigate('/products');
-                    else if (role === 'business') Router.navigate('/business/account');
-                    else if (role === 'dropshipper') Router.navigate('/dropshipper/storefront');
-                    else if (role === 'supplier') Router.navigate('/supplier/reports');
-                    else Router.navigate('/');
+                    window.location.hash = '#/';
+                    window.location.reload();
                 }, 500);
             } else {
                 Components.showNotification(result.message || 'Invalid code. Please try again.', 'error');
@@ -486,8 +483,9 @@ export const Pages = {
                     if (result.success) {
                         Components.showNotification(`Welcome back! Logged in as ${result.role}`, 'success');
                         setTimeout(() => {
+                            window.location.hash = '#/';
                             window.location.reload();
-                        }, 500); // Small delay to show notification, then reload to update UI/router state fully
+                        }, 500);
                         /*
                         // Previous navigation (kept for reference, but reload ensures full state refresh)
                         if (result.role === 'admin') Router.navigate('/admin/reports');
@@ -510,7 +508,7 @@ export const Pages = {
             <div class="flex items-center justify-center min-h-[70vh] px-4 py-8">
                 <div class="glass-card p-6 md:p-8 rounded-3xl w-full max-w-md border border-white mx-auto">
                     <div class="text-center mb-8">
-                        <img src="assets/logo.png" class="h-12 mx-auto mb-4">
+                        <img loading="lazy" src="assets/logo.png" class="h-12 mx-auto mb-4">
                         <h2 class="text-2xl font-bold text-slate-800">Welcome Back</h2>
                         <p class="text-slate-500 text-sm">Login to access your account</p>
                     </div>
@@ -593,7 +591,7 @@ export const Pages = {
             <div class="flex items-center justify-center min-h-[70vh] py-10 px-4">
                 <div class="glass-card p-6 md:p-8 rounded-3xl w-full max-w-2xl border border-white mx-auto">
                     <div class="text-center mb-8">
-                        <img src="assets/logo.png" class="h-12 mx-auto mb-4">
+                        <img loading="lazy" src="assets/logo.png" class="h-12 mx-auto mb-4">
                         <h2 class="text-2xl font-bold text-slate-800">Create Account</h2>
                         <p class="text-slate-500 text-sm">Join Xperiencestore today</p>
                     </div>
@@ -1053,6 +1051,12 @@ export const Pages = {
     consumer: {
         categories() {
             const categories = State.getCategories();
+            const { fetchedProducts, loading: isLoading } = State.get();
+
+            // Trigger product fetch if data not yet loaded
+            if (!fetchedProducts && !isLoading) {
+                State.fetchProducts({ limit: 50 }).then(() => Router.refresh());
+            }
             
             return `
                 <div class="px-4 sm:px-0">
@@ -1100,11 +1104,11 @@ export const Pages = {
 
         home() {
             const { fetchedProducts, fetchedSponsored, fetchedRecommended, loading: isLoading } = State.get();
-            const products = State.getProducts().slice(0, 8);
+            const products = State.getProducts().slice(0, 6); // Limit arrivals
 
             // Re-render when data is ready
             if (!fetchedProducts && !isLoading) {
-                State.fetchProducts().then(() => Router.refresh());
+                State.fetchProducts({ limit: 6 }).then(() => Router.refresh());
             }
 
             // Fetch extra data for sponsored and recommendations
@@ -1112,17 +1116,25 @@ export const Pages = {
             const recommended = State.get().recommendedProducts || [];
 
             if (!fetchedSponsored && !isLoading) {
-                State.fetchProducts({ sponsored: true, limit: 4 }).then(data => {
+                State.fetchProducts({ sponsored: true, limit: 8 }).then(data => {
                     State.set({ sponsoredProducts: data, fetchedSponsored: true });
                     Router.refresh();
                 });
             }
             if (!fetchedRecommended && !isLoading) {
                 State.fetchRecommendations().then(data => {
-                    State.set({ recommendedProducts: data, fetchedRecommended: true });
+                    // Filter to max 6 recommended
+                    State.set({ recommendedProducts: data.slice(0, 6), fetchedRecommended: true });
                     Router.refresh();
                 });
             }
+
+            // Sync all products shown here for card actions
+            window.currentProducts = [
+                ...products,
+                ...sponsored,
+                ...recommended
+            ];
 
             return `
                 <div class="space-y-12 px-4 sm:px-0">
@@ -1136,7 +1148,9 @@ export const Pages = {
                                 <button onclick="Router.navigate('/categories')" class="border-2 border-white px-8 py-3 rounded-full font-bold hover:bg-white/10 transition-all">Browse Categories</button>
                             </div>
                         </div>
-                        <img src="https://images.unsplash.com/photo-1607082348824-0a96f2a4b9da?w=400" class="h-48 md:h-64 rounded-2xl shadow-2xl transform hover:rotate-2 transition-all duration-500">
+                        <div class="w-full md:w-1/2">
+                            ${Components.RandomProductScroll(State.get().products || [])}
+                        </div>
                     </div>
 
                     <!-- Sponsored Deals (Only for non-admin/warehouse) -->
@@ -1193,27 +1207,27 @@ export const Pages = {
                     ` : ''}
 
                     <!-- Features -->
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 pt-6">
-                        <div class="glass-card p-6 rounded-2xl text-center hover:scale-105 transition-all">
-                            <div class="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                                <i data-lucide="truck" class="w-8 h-8 text-green-600"></i>
+                    <div class="flex overflow-x-auto md:grid md:grid-cols-3 gap-6 pt-6 no-scrollbar pb-4 -mx-4 px-4 sm:mx-0 sm:px-0">
+                        <div class="glass-card p-6 rounded-2xl text-center hover:scale-105 transition-all min-w-[200px] flex-1">
+                            <div class="w-12 h-12 md:w-16 md:h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                                <i data-lucide="truck" class="w-6 h-6 md:w-8 md:h-8 text-green-600"></i>
                             </div>
-                            <h3 class="font-bold mb-2">Free Shipping</h3>
-                            <p class="text-sm text-slate-500">On orders over ₦50,000</p>
+                            <h3 class="font-bold mb-1 text-sm md:text-base">Free Shipping</h3>
+                            <p class="text-[10px] md:text-sm text-slate-500">On orders over ₦50,000</p>
                         </div>
-                        <div class="glass-card p-6 rounded-2xl text-center hover:scale-105 transition-all">
-                            <div class="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                                <i data-lucide="shield-check" class="w-8 h-8 text-blue-600"></i>
+                        <div class="glass-card p-6 rounded-2xl text-center hover:scale-105 transition-all min-w-[200px] flex-1">
+                            <div class="w-12 h-12 md:w-16 md:h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                                <i data-lucide="shield-check" class="w-6 h-6 md:w-8 md:h-8 text-blue-600"></i>
                             </div>
-                            <h3 class="font-bold mb-2">Secure Payment</h3>
-                            <p class="text-sm text-slate-500">100% secure transactions</p>
+                            <h3 class="font-bold mb-1 text-sm md:text-base">Secure Payment</h3>
+                            <p class="text-[10px] md:text-sm text-slate-500">100% secure transactions</p>
                         </div>
-                        <div class="glass-card p-6 rounded-2xl text-center hover:scale-105 transition-all">
-                            <div class="w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                                <i data-lucide="headphones" class="w-8 h-8 text-orange-600"></i>
+                        <div class="glass-card p-6 rounded-2xl text-center hover:scale-105 transition-all min-w-[200px] flex-1">
+                            <div class="w-12 h-12 md:w-16 md:h-16 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                                <i data-lucide="headphones" class="w-6 h-6 md:w-8 md:h-8 text-orange-600"></i>
                             </div>
-                            <h3 class="font-bold mb-2">24/7 Support</h3>
-                            <p class="text-sm text-slate-500">Always here to help</p>
+                            <h3 class="font-bold mb-1 text-sm md:text-base">24/7 Support</h3>
+                            <p class="text-[10px] md:text-sm text-slate-500">Always here to help</p>
                         </div>
                     </div>
                 </div>
@@ -1221,55 +1235,161 @@ export const Pages = {
         },
 
         products(params = {}) {
-            const isLoading = State.isLoading();
-            const { category, search, page = 1 } = params;
-            // Get products from state
-            let products = State.getProducts();
+            const { categoryLoading, fetchedProducts, categoryProducts, categoryMeta } = State.get();
 
-            // Get unique categories from products
-            const categories = [...new Set(products.map(p => p.category))].map(c => ({
+            const { category, search, page = 1, minPrice, maxPrice, rating } = params;
+            const currentPage = parseInt(page) || 1;
+
+            // ---- Derive category list from main products (fast, already cached) ----
+            const allProducts = State.getProducts();
+            const categories = [...new Set(allProducts.map(p => p.category).filter(Boolean))].map(c => ({
                 name: c,
                 slug: c.toLowerCase().replace(/ /g, '-'),
-                count: products.filter(p => p.category === c).length
+                count: allProducts.filter(p => p.category === c).length
             }));
 
-            // Filter by category
-            if (category) {
-                products = products.filter(p => p.slug === category || p.category.toLowerCase().replace(/ /g, '-') === category);
+            // ---- Kick off server-side fetch for the current page/category ----
+            const fetchKey = JSON.stringify({ category, search, page: currentPage, minPrice, maxPrice, rating });
+            if (State._lastFetchKey !== fetchKey && !categoryLoading) {
+                State._lastFetchKey = fetchKey;
+                const fetchFilters = { page: currentPage, limit: 100 };
+                if (category) fetchFilters.category = categories.find(c => c.slug === category)?.name || category;
+                if (search) fetchFilters.search = search;
+                State.fetchProductPage(fetchFilters).then(() => Router.refresh());
             }
 
-            // Filter by Price
-            if (params.minPrice) products = products.filter(p => (State.get().userRole === 'business' ? p.bulkPrice : p.price) >= params.minPrice);
-            if (params.maxPrice) products = products.filter(p => (State.get().userRole === 'business' ? p.bulkPrice : p.price) <= params.maxPrice);
+            // ---- Products currently in view ----
+            let displayProducts = categoryProducts || [];
+            const meta = categoryMeta || { total: displayProducts.length, page: currentPage, totalPages: 1, pageSize: 100 };
+            const totalPages = meta.totalPages || 1;
+            const totalCount = meta.total || 0;
 
-            // Filter by Rating
-            if (params.rating) products = products.filter(p => p.rating >= parseFloat(params.rating));
-
-            // Advanced Weighted Search
+            // Client-side filters on the returned page (price/rating — not worth a round-trip)
+            if (minPrice) displayProducts = displayProducts.filter(p => (State.get().userRole === 'business' ? p.bulkPrice : p.price) >= parseFloat(minPrice));
+            if (maxPrice) displayProducts = displayProducts.filter(p => (State.get().userRole === 'business' ? p.bulkPrice : p.price) <= parseFloat(maxPrice));
+            if (rating)   displayProducts = displayProducts.filter(p => p.rating >= parseFloat(rating));
             if (search) {
-                products = products.map(p => {
-                    let weight = 0;
-                    const q = search.toLowerCase();
-                    if (p.name.toLowerCase() === q) weight += 100;
-                    else if (p.name.toLowerCase().startsWith(q)) weight += 50;
-                    else if (p.name.toLowerCase().includes(q)) weight += 20;
-                    if (p.category.toLowerCase().includes(q)) weight += 10;
-                    return { ...p, searchWeight: weight };
-                }).filter(p => p.searchWeight > 0).sort((a, b) => b.searchWeight - a.searchWeight);
+                displayProducts = displayProducts.map(p => {
+                    let w = 0; const q = search.toLowerCase();
+                    if (p.name.toLowerCase() === q) w += 100;
+                    else if (p.name.toLowerCase().startsWith(q)) w += 50;
+                    else if (p.name.toLowerCase().includes(q)) w += 20;
+                    if ((p.category || '').toLowerCase().includes(q)) w += 10;
+                    return { ...p, _w: w };
+                }).filter(p => p._w > 0).sort((a, b) => b._w - a._w);
             }
 
-            window.currentProducts = products;
-            const itemsPerPage = 12;
-            const totalPages = Math.ceil(products.length / itemsPerPage);
-            const startIndex = (page - 1) * itemsPerPage;
-            const paginatedProducts = products.slice(startIndex, startIndex + itemsPerPage);
+            window.currentProducts = displayProducts;
+
+            // ---- Build pagination URL — safe string concat (no nested template literals) ----
+            function buildPageUrl(p) {
+                var qs = 'page=' + p;
+                if (category) qs += '&category=' + encodeURIComponent(category);
+                if (search)   qs += '&search='   + encodeURIComponent(search);
+                if (minPrice) qs += '&minPrice='  + minPrice;
+                if (maxPrice) qs += '&maxPrice='  + maxPrice;
+                if (rating)   qs += '&rating='    + rating;
+                return '/products?' + qs;
+            }
+
+            // ---- Pagination bar — built with string concat to avoid nested backtick issues ----
+            function buildPaginationBar() {
+                if (totalPages <= 1) return '';
+                var pageNums = [];
+                var range = 2;
+                for (var i = 1; i <= totalPages; i++) {
+                    if (i === 1 || i === totalPages || (i >= currentPage - range && i <= currentPage + range)) {
+                        pageNums.push(i);
+                    } else if (pageNums[pageNums.length - 1] !== '...') {
+                        pageNums.push('...');
+                    }
+                }
+                var prevDisabled = currentPage <= 1;
+                var nextDisabled = currentPage >= totalPages;
+                var prevClass = prevDisabled
+                    ? 'border-slate-100 text-slate-300 cursor-not-allowed'
+                    : 'border-blue-200 text-blue-600 hover:bg-blue-600 hover:text-white hover:border-blue-600';
+                var nextClass = nextDisabled
+                    ? 'border-slate-100 text-slate-300 cursor-not-allowed'
+                    : 'border-blue-200 text-blue-600 hover:bg-blue-600 hover:text-white hover:border-blue-600';
+
+                var html = '<div class="flex items-center justify-center gap-2 mt-8 flex-wrap">';
+                html += '<button ' + (prevDisabled ? 'disabled' : 'onclick="Router.navigate(\'' + buildPageUrl(currentPage - 1) + '\')"') +
+                    ' class="flex items-center gap-1 px-4 py-2 rounded-xl border-2 font-bold text-sm transition-all ' + prevClass + '">' +
+                    '<i data-lucide="chevron-left" class="w-4 h-4"></i> Prev</button>';
+
+                pageNums.forEach(function(p) {
+                    if (p === '...') {
+                        html += '<span class="px-2 text-slate-400 font-bold select-none">…</span>';
+                    } else {
+                        var isActive = p === currentPage;
+                        var btnClass = isActive
+                            ? 'bg-blue-600 border-blue-600 text-white shadow-lg shadow-blue-200'
+                            : 'border-slate-200 text-slate-600 hover:border-blue-400 hover:text-blue-600';
+                        html += '<button onclick="Router.navigate(\'' + buildPageUrl(p) + '\')" class="w-10 h-10 rounded-xl border-2 font-bold text-sm transition-all ' + btnClass + '">' + p + '</button>';
+                    }
+                });
+
+                html += '<button ' + (nextDisabled ? 'disabled' : 'onclick="Router.navigate(\'' + buildPageUrl(currentPage + 1) + '\')"') +
+                    ' class="flex items-center gap-1 px-4 py-2 rounded-xl border-2 font-bold text-sm transition-all ' + nextClass + '">' +
+                    'Next <i data-lucide="chevron-right" class="w-4 h-4"></i></button>';
+                html += '</div>';
+                html += '<p class="text-center text-xs text-slate-400 mt-3">Page ' + currentPage + ' of ' + totalPages + ' &nbsp;·&nbsp; ' + totalCount.toLocaleString() + ' total products</p>';
+                return html;
+            }
+
+            // ---- Pre-compute dynamic class strings to avoid template literal parsing errors ----
+            var allCatActiveClass = !category ? 'border-blue-500 bg-blue-50/50 text-blue-600' : 'border-transparent hover:bg-slate-50 text-slate-600';
+
+            var allCatCountClass  = !category ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-400';
+            var loadingStatusHtml = categoryLoading
+                ? '<span class="inline-flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-blue-400 animate-ping inline-block"></span> Loading products\u2026</span>'
+                : 'Showing <b>' + displayProducts.length + '</b> products' + (totalCount ? ' of <b>' + totalCount.toLocaleString() + '</b> total' : '');
+
+            var categoryItemsHtml = categories.map(function(cat) {
+                var isActive = category === cat.slug;
+                var cls  = isActive ? 'border-blue-500 bg-blue-50/50 text-blue-600' : 'border-transparent hover:bg-slate-50 text-slate-600';
+                var cnt  = isActive ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-400';
+                return '<div onclick="Router.navigate(\'/products?category=' + cat.slug + '\')" class="flex items-center justify-between p-2 rounded-xl border-2 ' + cls + ' cursor-pointer transition-all group">'
+                     + '<span class="text-sm font-bold capitalize">' + cat.name + '</span>'
+                     + '<span class="text-[10px] font-bold ' + cnt + ' px-2 py-0.5 rounded-full group-hover:bg-blue-100 group-hover:text-blue-600">' + cat.count + '</span>'
+                     + '</div>';
+            }).join('');
+
+            var ratingItemsHtml = [1, 2, 3, 4, 5].map(function(r) {
+                var isActive = rating == r;
+                var catParam = category ? '&category=' + category : '';
+                var cls  = isActive ? 'border-blue-500 bg-blue-50 text-blue-600' : 'border-slate-100 hover:border-slate-300';
+                var star = isActive ? 'fill-blue-500' : 'fill-slate-200 text-slate-300';
+                return '<button onclick="Router.navigate(\'/products?rating=' + r + catParam + '\')" class="p-2 rounded-xl border-2 ' + cls + ' transition-all flex flex-col items-center gap-1">'
+                     + '<span class="text-xs font-bold">' + r + '</span>'
+                     + '<i data-lucide="star" class="w-3 h-3 ' + star + '"></i>'
+                     + '</button>';
+            }).join('');
+
+            var productsGridHtml;
+            if (categoryLoading) {
+                productsGridHtml = '<div class="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">'
+                    + Array(12).fill(Components.SkeletonProductCard()).join('')
+                    + '</div>';
+            } else if (displayProducts.length > 0) {
+                productsGridHtml = '<div class="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">'
+                    + displayProducts.map(function(p) { return Components.ProductCard(p); }).join('')
+                    + '</div>'
+                    + buildPaginationBar();
+            } else {
+                productsGridHtml = Components.EmptyState('search', 'No Products Found', 'Try adjusting your filters or search query',
+                    '<button onclick="Router.navigate(\'/products\')" class="bg-blue-600 text-white px-6 py-3 rounded-xl font-bold">Clear Filters</button>');
+            }
+
+            var breadcrumbLabel = category ? (categories.find(function(c) { return c.slug === category; }) || {}).name || 'Category' : 'All Products';
 
             return `
                 <div class="px-4 sm:px-0">
                     ${Components.Breadcrumbs([
-                { label: 'Home', link: '/' },
-                { label: category ? categories.find(c => c.slug === category)?.name || 'Products' : 'All Products' }
-            ])}
+                        { label: 'Home', link: '/' },
+                        { label: breadcrumbLabel }
+                    ])}
 
                     <div class="flex flex-col lg:flex-row gap-8">
                         <!-- Filters Sidebar -->
@@ -1286,61 +1406,36 @@ export const Pages = {
                                 <!-- Categories -->
                                 <div class="mb-8">
                                     <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-4">Categories</label>
-                                    <div class="space-y-1">
-                                        ${categories.map(cat => `
-                                            <div onclick="Router.navigate('/category/${cat.slug}')" class="flex items-center justify-between p-2 rounded-xl border-2 ${category === cat.slug ? 'border-blue-500 bg-blue-50/50 text-blue-600' : 'border-transparent hover:bg-slate-50 text-slate-600'} cursor-pointer transition-all group">
-                                                <span class="text-sm font-bold capitalize">${cat.name}</span>
-                                                <span class="text-[10px] font-bold ${category === cat.slug ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-400'} px-2 py-0.5 rounded-full group-hover:bg-blue-100 group-hover:text-blue-600">${cat.count}</span>
-                                            </div>
-                                        `).join('')}
+                                    <div class="space-y-1 max-h-72 overflow-y-auto pr-1">
+                                        <div onclick="Router.navigate('/products')" class="${allCatActiveClass} flex items-center justify-between p-2 rounded-xl border-2 cursor-pointer transition-all group">
+                                            <span class="text-sm font-bold">All Products</span>
+                                            <span class="text-[10px] font-bold ${allCatCountClass} px-2 py-0.5 rounded-full">${allProducts.length || totalCount}</span>
+                                        </div>
+                                        ${categoryItemsHtml}
                                     </div>
                                 </div>
 
                                 <!-- Price Range -->
                                 <div class="mb-8 p-4 bg-slate-50/50 rounded-2xl border border-slate-100">
                                     <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Price Range</label>
-                                    ${Components.DualHandleSlider('price-min', 'price-max', params.minPrice || 0, params.maxPrice || 1000000)}
+                                    ${Components.DualHandleSlider('price-min', 'price-max', minPrice || 0, maxPrice || 1000000)}
                                     <button onclick="Pages.consumer.applyPriceFilter()" class="w-full mt-4 bg-blue-600 text-white py-2 rounded-xl text-xs font-bold hover:bg-blue-700 transition-all shadow-lg shadow-blue-100">Apply Price</button>
                                 </div>
 
                                 <!-- Rating -->
                                 <div class="mb-2">
                                     <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-4">Minimum Rating</label>
-                                    <div class="grid grid-cols-5 gap-2">
-                                        ${[1, 2, 3, 4, 5].map(r => `
-                                            <button onclick="Router.navigate('/products?rating=${r}${category ? '&category='+category : ''}')" class="p-2 rounded-xl border-2 ${params.rating == r ? 'border-blue-500 bg-blue-50 text-blue-600' : 'border-slate-100 hover:border-slate-300'} transition-all flex flex-col items-center gap-1">
-                                                <span class="text-xs font-bold">${r}</span>
-                                                <i data-lucide="star" class="w-3 h-3 ${params.rating == r ? 'fill-blue-500' : 'fill-slate-200 text-slate-300'}"></i>
-                                            </button>
-                                        `).join('')}
-                                    </div>
+                                    <div class="grid grid-cols-5 gap-2">${ratingItemsHtml}</div>
                                 </div>
                             </div>
                         </aside>
 
                         <!-- Products Grid -->
-                        <div class="flex-1">
-                            <div class="flex justify-between items-center mb-6">
-                                <p class="text-sm text-slate-500">Showing ${startIndex + 1}-${Math.min(startIndex + itemsPerPage, products.length)} of ${products.length} products</p>
-                                <select class="bg-transparent border rounded-lg px-4 py-2 text-sm font-bold text-slate-800 outline-none">
-                                    <option>Sort by: Newest</option>
-                                    <option>Price: Low to High</option>
-                                    <option>Price: High to Low</option>
-                                    <option>Rating: High to Low</option>
-                                    <option>Most Popular</option>
-                                </select>
+                        <div class="flex-1 min-w-0">
+                            <div class="flex justify-between items-center mb-6 flex-wrap gap-2">
+                                <p class="text-sm text-slate-500">${loadingStatusHtml}</p>
                             </div>
-
-                            ${isLoading ? `
-                                <div class="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
-                                    ${Array(itemsPerPage).fill(Components.SkeletonProductCard()).join('')}
-                                </div>
-                            ` : (paginatedProducts.length > 0 ? `
-                                <div class="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
-                                    ${paginatedProducts.map(product => Components.ProductCard(product)).join('')}
-                                </div>
-                                ${Components.Pagination(page, totalPages, 'Pages.consumer.changePage')}
-                            ` : Components.EmptyState('search', 'No Products Found', 'Try adjusting your filters or search query', '<button onclick="Router.navigate(\'/products\')" class="bg-blue-600 text-white px-6 py-3 rounded-xl font-bold">Clear Filters</button>'))}
+                            ${productsGridHtml}
                         </div>
                     </div>
                 </div>
@@ -1360,6 +1455,9 @@ export const Pages = {
         productDetail(productId) {
             const product = State.getProducts().find(p => p.id === parseInt(productId));
             if (!product) return Components.EmptyState('package', 'Product Not Found', 'The product you\'re looking for doesn\'t exist');
+
+            // Track View
+            State.trackProductView(productId);
 
             // Define loading handler globally if not exists
             if (!window.handleImageLoad) {
@@ -1389,12 +1487,12 @@ export const Pages = {
                         <!-- Product Images -->
                         <div class="space-y-4">
                             <div class="glass-card rounded-[2rem] overflow-hidden h-72 sm:h-96 lg:h-[500px] relative flex items-center justify-center bg-gray-100">
-                                <img id="mainImage" src="${State.getMediaUrl(product.id, 0)}" onerror="console.error('Failed to load main product image:', this.src); this.src='https://via.placeholder.com/600?text=No+Image'" class="w-full h-full object-cover transform hover:scale-105 transition-all duration-500 relative z-10">
+                                <img loading="lazy" id="mainImage" src="${State.getMediaUrl(product.id, 0)}" onerror="console.error('Failed to load main product image:', this.src); this.src='https://via.placeholder.com/600?text=No+Image'" class="w-full h-full object-cover transform hover:scale-105 transition-all duration-500 relative z-10">
                             </div>
                             <div class="grid grid-cols-4 gap-2 sm:gap-4">
                                 ${galleryIndices.map(index => `
                                     <div onclick="const main = document.getElementById('mainImage'); main.src='${State.getMediaUrl(product.id, index)}';" class="glass-card rounded-xl h-16 sm:h-24 overflow-hidden cursor-pointer border-2 ${index === 0 ? 'border-blue-600' : 'border-transparent'} hover:border-blue-400 transition-all relative">
-                                        <img src="${State.getMediaUrl(product.id, index)}" onerror="this.parentElement.style.display='none'" class="w-full h-full object-cover">
+                                        <img loading="lazy" src="${State.getMediaUrl(product.id, index)}" onerror="this.parentElement.style.display='none'" class="w-full h-full object-cover">
                                     </div>
                                 `).join('')}
                             </div>
@@ -1529,7 +1627,7 @@ export const Pages = {
                                     container.innerHTML = videos.slice(0, 4).map(video => \`
                                         <div class="glass-card rounded-2xl overflow-hidden group">
                                             <div class="relative aspect-video">
-                                                <img src="\${video.thumbnail}" class="w-full h-full object-cover">
+                                                <img loading="lazy" src="\${video.thumbnail}" class="w-full h-full object-cover">
                                                 <div class="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                                                     <a href="https://youtube.com/watch?v=\${video.id}" target="_blank" class="w-12 h-12 bg-red-600 rounded-full flex items-center justify-center shadow-xl shadow-red-600/40">
                                                         <i data-lucide="play" class="w-6 h-6 text-white fill-white"></i>
@@ -1583,70 +1681,82 @@ export const Pages = {
 
             return `
                 <div class="max-w-6xl mx-auto">
-                    <h1 class="text-3xl font-bold mb-8">Shopping Cart (${cart.length} items)</h1>
+                    <h1 class="text-3xl font-bold mb-8">Shopping Cart (<span id="cart-count-title">${cart.length}</span> items)</h1>
 
                     <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
                         <!-- Cart Items -->
-                        <div class="lg:col-span-2 space-y-4">
-                            ${State.get().fetchingCart ? `
-                                ${Array(3).fill(0).map(() => Components.SkeletonCartItem()).join('')}
-                            ` : cart.map(item => `
-                                <div class="glass-card p-4 sm:p-6 rounded-2xl flex flex-col sm:flex-row gap-4 sm:gap-6 items-center sm:items-start text-center sm:text-left transition-all hover:shadow-md">
-                                    <img src="${State.getMediaUrl(item.id, 0)}" onerror="this.src='https://via.placeholder.com/150?text=No+Image'" alt="${item.name}" class="w-full sm:w-24 h-48 sm:h-24 object-cover rounded-xl shadow-sm">
-                                    <div class="flex-1 w-full">
-                                        <h3 class="font-bold mb-1 text-slate-800 text-lg sm:text-base">${item.name}</h3>
-                                        <p class="text-sm text-slate-500 mb-3">${item.category}</p>
-                                        <div class="flex flex-col sm:flex-row items-center gap-4 justify-between w-full">
-                                            <div class="flex items-center border rounded-lg overflow-hidden bg-white shadow-sm">
-                                                <button onclick="State.updateCartQuantity(${item.id}, ${item.quantity - 1}); Router.navigate('/cart')" class="px-3 py-2 hover:bg-slate-100 transition-colors bg-slate-50">-</button>
-                                                <span class="px-4 py-2 border-x font-bold min-w-[3rem] text-center">${item.quantity}</span>
-                                                <button onclick="State.updateCartQuantity(${item.id}, ${item.quantity + 1}); Router.navigate('/cart')" class="px-3 py-2 hover:bg-slate-100 transition-colors bg-slate-50">+</button>
-                                            </div>
-                                            <button onclick="State.removeFromCart(${item.id}); Router.navigate('/cart')" class="text-red-500 text-sm hover:text-red-700 hover:underline flex items-center gap-1 transition-colors p-2 sm:p-0">
-                                                <i data-lucide="trash-2" class="w-4 h-4"></i> Remove
-                                            </button>
-                                        </div>
-                                    </div>
-                                    <div class="text-center sm:text-right w-full sm:w-auto mt-2 sm:mt-0 pt-4 sm:pt-0 border-t sm:border-t-0 border-slate-100">
-                                        <p class="text-xl font-bold text-blue-600">${State.formatCurrency((Number(item.price) || 0) * (Number(item.quantity) || 0))}</p>
-                                        <p class="text-xs text-slate-400 mt-1">${State.formatCurrency(Number(item.price) || 0)} each</p>
-                                    </div>
-                                </div>
-                            `).join('')}
+                        <div class="lg:col-span-2 space-y-4" id="cart-items-list">
+                            ${this.renderCartItems(cart)}
                         </div>
 
                         <!-- Order Summary -->
-                        <div class="glass-card p-6 rounded-2xl h-fit sticky top-24">
-                            <h3 class="font-bold text-lg mb-4">Order Summary</h3>
-                                <div class="space-y-3 text-sm border-b pb-4 mb-4">
-                                    <div class="flex justify-between">
-                                        <span class="text-slate-600">Subtotal</span>
-                                        <span class="font-bold">${State.formatCurrency(total)}</span>
-                                    </div>
-                                    <div class="flex justify-between">
-                                        <span class="text-slate-600">Shipping</span>
-                                        <span class="text-green-600 font-bold">FREE</span>
-                                    </div>
-                                    <div class="flex justify-between">
-                                        <span class="text-slate-600">Tax (estimated)</span>
-                                        <span class="font-bold">${State.formatCurrency((Number(total) || 0) * 0.08)}</span>
-                                    </div>
-                                </div>
-                                <div class="flex justify-between text-xl font-bold mb-6">
-                                    <span>Total</span>
-                                    <span class="text-blue-600">${State.formatCurrency((Number(total) || 0) * 1.08)}</span>
-                                </div>
-                            <button onclick="Router.navigate('/checkout')" class="w-full bg-blue-600 text-white p-4 rounded-xl font-bold shadow-lg hover:bg-blue-700 transition-all mb-3">
-                                Proceed to Checkout
-                            </button>
-                            <button onclick="Router.navigate('/products')" class="w-full border-2 border-slate-300 p-4 rounded-xl font-bold hover:bg-slate-50 transition-all">
-                                Continue Shopping
-                            </button>
+                        <div class="glass-card p-6 rounded-2xl h-fit sticky top-24" id="cart-summary-details">
+                            ${this.renderCartSummary(total)}
                         </div>
                     </div>
+                    
+                    <!-- Recommendations Section -->
+                    ${Components.MoreToLoveSection(State.get().recommendedProducts || [])}
                 </div>
             `;
         },
+
+        renderCartItems(cart) {
+            return cart.map(item => `
+                <div class="glass-card p-4 sm:p-6 rounded-2xl flex flex-col sm:flex-row gap-4 sm:gap-6 items-center sm:items-start text-center sm:text-left transition-all hover:shadow-md" id="cart-item-${item.id}">
+                    <img loading="lazy" src="${State.getMediaUrl(item.id, 0)}" onerror="this.src='https://via.placeholder.com/150?text=No+Image'" alt="${item.name}" class="w-full sm:w-24 h-48 sm:h-24 object-cover rounded-xl shadow-sm">
+                    <div class="flex-1 w-full">
+                        <h3 class="font-bold mb-1 text-slate-800 text-lg sm:text-base">${item.name}</h3>
+                        <p class="text-sm text-slate-500 mb-3">${item.category}</p>
+                        <div class="flex flex-col sm:flex-row items-center gap-4 justify-between w-full">
+                            <div class="flex items-center border rounded-lg overflow-hidden bg-white shadow-sm">
+                                <button onclick="window.updateCartQty(${item.id}, ${item.quantity - 1})" class="px-3 py-2 hover:bg-slate-100 transition-colors bg-slate-50">-</button>
+                                <span class="px-4 py-2 border-x font-bold min-w-[3rem] text-center">${item.quantity}</span>
+                                <button onclick="window.updateCartQty(${item.id}, ${item.quantity + 1})" class="px-3 py-2 hover:bg-slate-100 transition-colors bg-slate-50">+</button>
+                            </div>
+                            <button onclick="window.removeCartItem(${item.id})" class="text-red-500 text-sm hover:text-red-700 hover:underline flex items-center gap-1 transition-colors p-2 sm:p-0">
+                                <i data-lucide="trash-2" class="w-4 h-4"></i> Remove
+                            </button>
+                        </div>
+                    </div>
+                    <div class="text-center sm:text-right w-full sm:w-auto mt-2 sm:mt-0 pt-4 sm:pt-0 border-t sm:border-t-0 border-slate-100">
+                        <p class="text-xl font-bold text-blue-600">${State.formatCurrency((Number(item.price) || 0) * (Number(item.quantity) || 0))}</p>
+                        <p class="text-xs text-slate-400 mt-1">${State.formatCurrency(Number(item.price) || 0)} each</p>
+                    </div>
+                </div>
+            `).join('');
+        },
+
+        renderCartSummary(total) {
+            return `
+                <h3 class="font-bold text-lg mb-4">Order Summary</h3>
+                <div class="space-y-3 text-sm border-b pb-4 mb-4">
+                    <div class="flex justify-between">
+                        <span class="text-slate-600">Subtotal</span>
+                        <span class="font-bold">${State.formatCurrency(total)}</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-slate-600">Shipping</span>
+                        <span class="text-green-600 font-bold">FREE</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-slate-600">Tax (estimated)</span>
+                        <span class="font-bold">${State.formatCurrency((Number(total) || 0) * 0.08)}</span>
+                    </div>
+                </div>
+                <div class="flex justify-between text-xl font-bold mb-6">
+                    <span>Total</span>
+                    <span class="text-blue-600">${State.formatCurrency((Number(total) || 0) * 1.08)}</span>
+                </div>
+                <button onclick="Router.navigate('/checkout')" class="w-full bg-blue-600 text-white p-4 rounded-xl font-bold shadow-lg hover:bg-blue-700 transition-all mb-3">
+                    Proceed to Checkout
+                </button>
+                <button onclick="Router.navigate('/products')" class="w-full border-2 border-slate-300 p-4 rounded-xl font-bold hover:bg-slate-50 transition-all">
+                    Continue Shopping
+                </button>
+            `;
+        },
+
 
         checkout() {
             const cart = State.get().cart;
@@ -1855,7 +1965,7 @@ export const Pages = {
                                 <div class="space-y-3 mb-4 max-h-64 overflow-y-auto">
                                     ${cart.map(item => `
                                         <div class="flex gap-3">
-                                            <img src="${State.getMediaUrl(item.id, 0)}" onerror="this.src='https://via.placeholder.com/150?text=No+Image'" class="w-16 h-16 rounded-lg object-cover">
+                                            <img loading="lazy" src="${State.getMediaUrl(item.id, 0)}" onerror="this.src='https://via.placeholder.com/150?text=No+Image'" class="w-16 h-16 rounded-lg object-cover">
                                             <div class="flex-1">
                                                 <p class="font-bold text-sm">${item.name}</p>
                                                 <p class="text-xs text-slate-400">Qty: ${item.quantity}</p>
@@ -1973,31 +2083,12 @@ export const Pages = {
                 return;
             }
 
-            State.notify('Creating order...', 'info');
+            State.notify('Initiating payment gateway...', 'info');
 
             try {
-                // 1. Create Order in DB
-                const orderResponse = await fetch(window.apiUrl('/api/orders'), {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${session.token}`
-                    },
-                    body: JSON.stringify({
-                        shippingAddress: `${fname} ${lname}, ${address}, ${city}, ${country}. Ph: ${phone}`,
-                        notes: 'Web order'
-                    })
-                });
+                // We no longer create the Order here. 
+                // We directly initialize payment with the transaction metadata!
 
-                const orderData = await orderResponse.json();
-                if (!orderResponse.ok) {
-                    throw new Error(orderData.message || 'Failed to create order');
-                }
-
-                const orderId = orderData.orderId;
-                State.notify('Initiating payment...', 'info');
-
-                // 2. Initialize Payment Gateway Redirect
                 const paymentResponse = await fetch(window.apiUrl('/api/payment/initialize'), {
                     method: 'POST',
                     headers: {
@@ -2006,18 +2097,19 @@ export const Pages = {
                     },
                     body: JSON.stringify({
                         userId: session.id,
-                        orderId: orderId,
+                        orderId: null, // Order is purposefully delayed until callback
                         amount: total,
                         currency: 'NGN',
                         paymentGateway: method,
-                        userCurrency: 'NGN'
+                        userCurrency: 'NGN',
+                        shippingAddress: `${fname} ${lname}, ${address}, ${city}, ${country}. Ph: ${phone}`,
+                        notes: 'Web order'
                     })
                 });
 
                 const paymentData = await paymentResponse.json();
 
                 if (paymentData.success) {
-                    // Stripe / Paystack / Flutterwave/ PayPal redirect logic
                     const pData = paymentData.paymentData || paymentData;
                     const redirectUrl = pData.checkoutUrl ||
                         pData.authorizationUrl ||
@@ -2027,8 +2119,8 @@ export const Pages = {
                     if (redirectUrl) {
                         window.location.href = redirectUrl;
                     } else if (paymentData.method === 'gift_card') {
-                        State.clearCart();
-                        Router.navigate(`/order-confirmation/${orderId}`);
+                        // For perfectly synchronous zero-balance gateway transactions
+                        Router.navigate(`/payment-status?gateway=gift_card&status=success&reference=${paymentData.transactionRef}`);
                     } else {
                         throw new Error('No payment redirect URL received');
                     }
@@ -2105,6 +2197,104 @@ export const Pages = {
         },
 
         account() {
+            // Auth guard: show sign-in/sign-up landing page for unauthenticated users
+            if (!Auth.isLoggedIn()) {
+                return `
+                    <div class="min-h-[85vh] flex items-center justify-center px-4 py-12" style="background: linear-gradient(135deg, #f0f4ff 0%, #e8f0fe 50%, #fdf2ff 100%)">
+                        <div class="max-w-5xl w-full">
+
+                            <!-- Hero Section -->
+                            <div class="text-center mb-16">
+                                <div class="inline-flex items-center gap-2 bg-blue-50 border border-blue-100 text-blue-600 text-xs font-bold px-4 py-2 rounded-full mb-6 uppercase tracking-widest">
+                                    <i data-lucide="shield-check" class="w-3.5 h-3.5"></i>
+                                    Secure Account Portal
+                                </div>
+                                <h1 class="text-5xl md:text-6xl font-black text-slate-900 mb-5 leading-tight">
+                                    Your <span style="background: linear-gradient(135deg, #2563eb, #7c3aed); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">Xperience</span><br>Awaits
+                                </h1>
+                                <p class="text-xl text-slate-500 max-w-lg mx-auto leading-relaxed">
+                                    Sign in to manage your orders, wishlist, and account settings — or create a free account to get started.
+                                </p>
+                            </div>
+
+                            <!-- Cards -->
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-3xl mx-auto mb-14">
+
+                                <!-- Sign In Card -->
+                                <div class="group relative bg-white rounded-3xl p-8 shadow-xl border border-slate-100 hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 cursor-pointer" onclick="Router.navigate('/login')" id="account-signin-card">
+                                    <div class="absolute inset-0 rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-300" style="background: linear-gradient(135deg, rgba(37,99,235,0.04), rgba(124,58,237,0.04));"></div>
+                                    <div class="relative">
+                                        <div class="w-14 h-14 rounded-2xl flex items-center justify-center mb-6 shadow-lg" style="background: linear-gradient(135deg, #2563eb, #3b82f6);">
+                                            <i data-lucide="log-in" class="w-7 h-7 text-white"></i>
+                                        </div>
+                                        <h2 class="text-2xl font-bold text-slate-900 mb-3">Sign In</h2>
+                                        <p class="text-slate-500 text-sm leading-relaxed mb-6">
+                                            Already have an account? Access your dashboard, view orders, and manage your profile.
+                                        </p>
+                                        <div class="flex flex-wrap gap-2 mb-8">
+                                            <span class="bg-blue-50 text-blue-600 text-xs font-bold px-3 py-1 rounded-full">Track Orders</span>
+                                            <span class="bg-blue-50 text-blue-600 text-xs font-bold px-3 py-1 rounded-full">Wishlist</span>
+                                            <span class="bg-blue-50 text-blue-600 text-xs font-bold px-3 py-1 rounded-full">Settings</span>
+                                        </div>
+                                        <button onclick="event.stopPropagation(); Router.navigate('/login')" id="account-goto-signin" class="w-full py-3.5 rounded-2xl font-bold text-white transition-all hover:opacity-90 active:scale-[0.98] flex items-center justify-center gap-2" style="background: linear-gradient(135deg, #2563eb, #3b82f6); box-shadow: 0 8px 24px rgba(37,99,235,0.3);">
+                                            <i data-lucide="log-in" class="w-4 h-4"></i>
+                                            Sign In to Your Account
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <!-- Create Account Card -->
+                                <div class="group relative bg-white rounded-3xl p-8 shadow-xl border border-slate-100 hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 cursor-pointer" onclick="Router.navigate('/register')" id="account-register-card">
+                                    <div class="absolute inset-0 rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-300" style="background: linear-gradient(135deg, rgba(124,58,237,0.04), rgba(16,185,129,0.04));"></div>
+                                    <div class="relative">
+                                        <div class="w-14 h-14 rounded-2xl flex items-center justify-center mb-6 shadow-lg" style="background: linear-gradient(135deg, #7c3aed, #a855f7);">
+                                            <i data-lucide="user-plus" class="w-7 h-7 text-white"></i>
+                                        </div>
+                                        <h2 class="text-2xl font-bold text-slate-900 mb-3">Create Account</h2>
+                                        <p class="text-slate-500 text-sm leading-relaxed mb-6">
+                                            New to Xperiencestore? Join thousands of shoppers and unlock exclusive benefits.
+                                        </p>
+                                        <div class="flex flex-wrap gap-2 mb-8">
+                                            <span class="bg-purple-50 text-purple-600 text-xs font-bold px-3 py-1 rounded-full">Free to Join</span>
+                                            <span class="bg-purple-50 text-purple-600 text-xs font-bold px-3 py-1 rounded-full">Exclusive Deals</span>
+                                            <span class="bg-purple-50 text-purple-600 text-xs font-bold px-3 py-1 rounded-full">Fast Checkout</span>
+                                        </div>
+                                        <button onclick="event.stopPropagation(); Router.navigate('/register')" id="account-goto-register" class="w-full py-3.5 rounded-2xl font-bold text-white transition-all hover:opacity-90 active:scale-[0.98] flex items-center justify-center gap-2" style="background: linear-gradient(135deg, #7c3aed, #a855f7); box-shadow: 0 8px 24px rgba(124,58,237,0.3);">
+                                            <i data-lucide="user-plus" class="w-4 h-4"></i>
+                                            Create Free Account
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Trust Badges -->
+                            <div class="flex flex-wrap items-center justify-center gap-6 text-slate-400 text-xs font-bold">
+                                <div class="flex items-center gap-2">
+                                    <i data-lucide="lock" class="w-4 h-4 text-green-500"></i>
+                                    <span>256-bit SSL Secure</span>
+                                </div>
+                                <div class="w-1 h-1 bg-slate-300 rounded-full hidden sm:block"></div>
+                                <div class="flex items-center gap-2">
+                                    <i data-lucide="shield" class="w-4 h-4 text-blue-500"></i>
+                                    <span>Privacy Protected</span>
+                                </div>
+                                <div class="w-1 h-1 bg-slate-300 rounded-full hidden sm:block"></div>
+                                <div class="flex items-center gap-2">
+                                    <i data-lucide="users" class="w-4 h-4 text-purple-500"></i>
+                                    <span>50,000+ Happy Customers</span>
+                                </div>
+                                <div class="w-1 h-1 bg-slate-300 rounded-full hidden sm:block"></div>
+                                <div class="flex items-center gap-2">
+                                    <i data-lucide="headphones" class="w-4 h-4 text-orange-500"></i>
+                                    <span>24/7 Support</span>
+                                </div>
+                            </div>
+
+                        </div>
+                    </div>
+                `;
+            }
+
             const user = State.getUser() || { name: 'Welcome', email: '' };
 
             // Fetch real status in background
@@ -2147,7 +2337,7 @@ export const Pages = {
                                 <i data-lucide="settings" class="w-5 h-5 inline mr-2"></i>
                                 Settings
                             </button>
-                            <button onclick="Auth.logout(); Router.navigate('/')" class="w-full p-4 glass-card rounded-xl font-bold text-left text-red-600 hover:bg-red-50 transition-all">
+                            <button onclick="Auth.logout(); window.location.hash = '/'; window.location.reload();" class="w-full p-4 glass-card rounded-xl font-bold text-left text-red-600 hover:bg-red-50 transition-all" id="account-logout-btn">
                                 <i data-lucide="log-out" class="w-5 h-5 inline mr-2"></i>
                                 Logout
                             </button>
@@ -2227,6 +2417,9 @@ export const Pages = {
                             ${wishlist.map(product => Components.ProductCard(product)).join('')}
                         </div>
                     ` : Components.EmptyState('heart', 'Your Wishlist is Empty', 'Save products you love for later', '<button onclick="Router.navigate(\'/products\')" class="bg-blue-600 text-white px-6 py-3 rounded-xl font-bold">Browse Products</button>'))}
+
+                    <!-- Recommendations Section -->
+                    ${Components.MoreToLoveSection(State.get().recommendedProducts || [])}
                 </div>
             `;
         },
@@ -2520,7 +2713,7 @@ export const Pages = {
                         <div class="md:col-span-1 space-y-6">
                             <div class="glass-card p-6 rounded-2xl text-center">
                                 <div class="w-24 h-24 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4 overflow-hidden relative group">
-                                    <img id="profile-img-preview" src="${user.profile_image || 'assets/default-avatar.png'}" class="w-full h-full object-cover" onerror="this.src='https://ui-avatars.com/api/?name=${user.name}'">
+                                    <img loading="lazy" id="profile-img-preview" src="${user.profile_image || 'assets/default-avatar.png'}" class="w-full h-full object-cover" onerror="this.src='https://ui-avatars.com/api/?name=${user.name}'">
                                     <div class="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer" onclick="document.getElementById('p-image').click()">
                                         <i data-lucide="camera" class="w-6 h-6 text-white"></i>
                                     </div>
@@ -2733,7 +2926,7 @@ export const Pages = {
                     <!-- Supplier Header -->
                     <div class="glass-card p-8 rounded-2xl mb-8">
                         <div class="flex flex-col md:flex-row gap-6 items-start">
-                            <img src="${supplier.logo}" alt="${supplier.name}" class="w-24 h-24 rounded-xl shadow-lg">
+                            <img onerror="this.src='/assets/placeholder.png'; this.onerror=null;" loading="lazy" src="${supplier.logo}" alt="${supplier.name}" class="w-24 h-24 rounded-xl shadow-lg">
                             <div class="flex-1">
                                 <div class="flex items-center gap-3 mb-2">
                                     <h1 class="text-3xl font-bold">${supplier.name}</h1>
@@ -2797,14 +2990,65 @@ export const Pages = {
         const { q = '', page = 1 } = params;
         let products = State.getProducts();
 
-        // Filter by search query
+        // Filter by search query using advanced fuzzy token ranking
         if (q) {
             const query = q.toLowerCase();
-            products = products.filter(p =>
-                p.name.toLowerCase().includes(query) ||
-                p.description.toLowerCase().includes(query) ||
-                p.category.toLowerCase().includes(query)
-            );
+            
+            // 1. Ensure pre-computation index exists
+            if (products.length > 0 && !products[0]._searchTerms) {
+                for (let i = 0; i < products.length; i++) {
+                    const p = products[i];
+                    const name = (p.name || '').toLowerCase();
+                    const cat = (p.category || '').toLowerCase();
+                    const desc = (p.description || '').toLowerCase();
+                    products[i]._searchTerms = `${name} ${cat} ${desc}`;
+                    products[i]._nameLower = name;
+                    products[i]._catLower = cat;
+                }
+            }
+
+            const tokens = query.split(/\\s+/).filter(t => t.length > 0);
+            const matches = [];
+
+            for (let i = 0; i < products.length; i++) {
+                const p = products[i];
+                let matchedTokensCount = 0;
+                
+                for (let t = 0; t < tokens.length; t++) {
+                    if (p._searchTerms.includes(tokens[t])) {
+                        matchedTokensCount++;
+                    }
+                }
+                
+                const matchRatio = tokens.length > 0 ? (matchedTokensCount / tokens.length) : 0;
+                
+                if (matchRatio < 0.25) continue; // Reject if under 25% match rate
+
+                let weight = 0;
+                
+                // Massive ranking boost based on percentage hitting thresholds
+                if (matchRatio >= 0.50) weight += 1000; // Rank as 100%
+                else if (matchRatio >= 0.25) weight += 200; // Still passes, rank lower
+                 
+                weight += Math.pow(matchedTokensCount, 2) * 5; 
+
+                if (p._nameLower === query) weight += 500;
+                else if (p._nameLower.startsWith(query)) weight += 100;
+                else if (p._nameLower.includes(query)) weight += 30;
+
+                for(let t = 0; t < tokens.length; t++) {
+                    if (p._nameLower.includes(tokens[t])) weight += 15;
+                    if (p._catLower.includes(tokens[t])) weight += 5;
+                }
+
+                if (weight > 0) {
+                    p._searchWeight = weight;
+                    matches.push(p);
+                }
+            }
+            
+            // Sort by search relevance weight
+            products = matches.sort((a, b) => b._searchWeight - a._searchWeight);
         }
 
         window.currentProducts = products;
@@ -3034,7 +3278,7 @@ export const Pages = {
                                 <button onclick="Router.navigate('/business/rfq/create')" class="border-2 border-white px-8 py-3 rounded-full font-bold hover:bg-white/10 transition-all">Create RFQ</button>
                             </div>
                         </div>
-                        <img src="https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?w=400" class="h-48 md:h-64 rounded-2xl shadow-2xl transform hover:-rotate-2 transition-all duration-500">
+                        <img loading="lazy" src="https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?w=400" class="h-48 md:h-64 rounded-2xl shadow-2xl transform hover:-rotate-2 transition-all duration-500">
                     </div>
 
                     <!-- Quick Stats -->
@@ -3635,7 +3879,7 @@ export const Pages = {
                                 <button onclick="Router.navigate('/dropshipper/catalog')" class="border-2 border-white px-6 py-3 rounded-full font-bold hover:bg-white/10 transition-all">Source Products</button>
                             </div>
                         </div>
-                        <img src="https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?w=400" class="h-64 rounded-2xl shadow-2xl">
+                        <img loading="lazy" src="https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?w=400" class="h-64 rounded-2xl shadow-2xl">
                     </div>
 
                     <!-- Quick Stats -->
@@ -3684,7 +3928,7 @@ export const Pages = {
                             <div class="space-y-3">
                                 ${products.slice(0, 4).map((product, i) => `
                                     <div class="flex items-center gap-4 p-2 hover:bg-slate-50 rounded-xl transition-all">
-                                        <img src="${State.getMediaUrl(product.id, 0)}" onerror="this.src='https://via.placeholder.com/150?text=No+Image'" class="w-12 h-12 rounded-lg object-cover shadow-sm">
+                                        <img loading="lazy" src="${State.getMediaUrl(product.id, 0)}" onerror="this.src='https://via.placeholder.com/150?text=No+Image'" class="w-12 h-12 rounded-lg object-cover shadow-sm">
                                         <div class="flex-1">
                                             <p class="font-bold text-sm line-clamp-1">${product.name}</p>
                                             <p class="text-[10px] text-slate-400 uppercase font-bold tracking-wider">${product.category}</p>
@@ -3869,7 +4113,7 @@ export const Pages = {
                         ${storeProducts.map(product => `
                             <div class="glass-card rounded-2xl overflow-hidden group">
                                 <div class="relative">
-                                    <img src="${State.getMediaUrl(product.id, 0)}" onerror="this.src='https://via.placeholder.com/300?text=No+Image'" alt="${product.name}" class="h-48 w-full object-cover">
+                                    <img loading="lazy" src="${State.getMediaUrl(product.id, 0)}" onerror="this.src='https://via.placeholder.com/300?text=No+Image'" alt="${product.name}" class="h-48 w-full object-cover">
                                     <div class="absolute top-2 right-2 flex gap-2">
                                         <button class="bg-white p-2 rounded-lg shadow hover:bg-red-50 transition-all">
                                             <i data-lucide="trash-2" class="w-4 h-4 text-red-600"></i>
@@ -4043,7 +4287,7 @@ export const Pages = {
 
                 return `
                                         <div class="glass-card rounded-2xl overflow-hidden">
-                                            <img src="${State.getMediaUrl(product.id, 0)}" onerror="this.src='https://via.placeholder.com/300?text=No+Image'" alt="${product.name}" class="h-48 w-full object-cover">
+                                            <img loading="lazy" src="${State.getMediaUrl(product.id, 0)}" onerror="this.src='https://via.placeholder.com/300?text=No+Image'" alt="${product.name}" class="h-48 w-full object-cover">
                                             <div class="p-4">
                                                 <h3 class="font-bold mb-2 line-clamp-2">${product.name}</h3>
                                                 <div class="grid grid-cols-2 gap-3 mb-4 text-sm">
@@ -4094,7 +4338,7 @@ export const Pages = {
                     <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
                         <!-- Product Info -->
                         <div class="glass-card p-6 rounded-2xl">
-                            <img src="${State.getMediaUrl(product.id, 0)}" onerror="this.src='https://via.placeholder.com/300?text=No+Image'" class="w-full h-48 object-cover rounded-xl mb-4">
+                            <img loading="lazy" src="${State.getMediaUrl(product.id, 0)}" onerror="this.src='https://via.placeholder.com/300?text=No+Image'" class="w-full h-48 object-cover rounded-xl mb-4">
                             <h2 class="text-xl font-bold mb-2">${product.name}</h2>
                             <p class="text-sm text-slate-600 mb-4">${product.description}</p>
                             <div class="flex items-center gap-2">
@@ -4264,7 +4508,7 @@ export const Pages = {
                                 ${(State.get().dropshipperProducts || []).slice(0, 5).map((product, i) => `
                                     <div class="flex items-center gap-4 p-3 hover:bg-slate-50 rounded-xl transition-all">
                                         <span class="text-2xl font-bold text-slate-300">${i + 1}</span>
-                                        <img src="${State.getMediaUrl(product.id, 0)}" onerror="this.src='https://via.placeholder.com/150?text=No+Image'" class="w-12 h-12 rounded-lg object-cover">
+                                        <img loading="lazy" src="${State.getMediaUrl(product.id, 0)}" onerror="this.src='https://via.placeholder.com/150?text=No+Image'" class="w-12 h-12 rounded-lg object-cover">
                                         <div class="flex-1">
                                             <p class="font-bold text-sm">${product.name}</p>
                                             <p class="text-xs text-slate-500">${15 + i * 3} sales</p>
@@ -4850,7 +5094,7 @@ export const Pages = {
                                 <button onclick="Router.navigate('/warehouse/fulfillment')" class="border-2 border-white px-6 py-3 rounded-full font-bold hover:bg-white/10 transition-all">Fulfillment</button>
                             </div>
                         </div>
-                        <img src="https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?w=400" class="h-64 rounded-2xl shadow-2xl">
+                        <img loading="lazy" src="https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?w=400" class="h-64 rounded-2xl shadow-2xl">
                     </div>
 
                     <!-- Quick Stats -->
@@ -5443,7 +5687,7 @@ export const Pages = {
                                 <button onclick="Router.navigate('/supplier/orders')" class="border-2 border-white px-8 py-3 rounded-full font-bold hover:bg-white/10 transition-all">Manage Orders</button>
                             </div>
                         </div>
-                        <img src="https://images.unsplash.com/photo-1556740758-90de374c12ad?w=400" class="h-48 md:h-64 rounded-2xl shadow-2xl transform hover:rotate-2 transition-all duration-500">
+                        <img loading="lazy" src="https://images.unsplash.com/photo-1556740758-90de374c12ad?w=400" class="h-48 md:h-64 rounded-2xl shadow-2xl transform hover:rotate-2 transition-all duration-500">
                     </div>
 
                     <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
@@ -5483,7 +5727,7 @@ export const Pages = {
                             <div class="space-y-3">
                                 ${products.length > 0 ? products.map((product, i) => `
                                     <div class="flex items-center gap-4 p-2 rounded-xl hover:bg-slate-50 transition-all">
-                                        <img src="${State.getMediaUrl(product.id, 0)}" onerror="this.src='https://via.placeholder.com/150?text=No+Image'" class="w-12 h-12 rounded-lg object-cover">
+                                        <img loading="lazy" src="${State.getMediaUrl(product.id, 0)}" onerror="this.src='https://via.placeholder.com/150?text=No+Image'" class="w-12 h-12 rounded-lg object-cover">
                                         <div class="flex-1">
                                             <p class="font-bold text-sm text-slate-800">${product.name}</p>
                                             <p class="text-xs text-slate-500">${product.stock} units in stock</p>
@@ -5578,7 +5822,7 @@ export const Pages = {
                                     <tr class="hover:bg-slate-50/80 transition-colors group">
                                         <td class="p-6">
                                             <div class="flex items-center gap-4">
-                                                <img src="${State.getMediaUrl(product.id, 0)}" onerror="this.src='https://via.placeholder.com/150?text=No+Image'" class="w-12 h-12 rounded-lg object-cover shadow-sm">
+                                                <img loading="lazy" src="${State.getMediaUrl(product.id, 0)}" onerror="this.src='https://via.placeholder.com/150?text=No+Image'" class="w-12 h-12 rounded-lg object-cover shadow-sm">
                                                 <div>
                                                     <p class="font-bold text-slate-800">${product.name}</p>
                                                     <p class="text-xs text-slate-400">ID: ${product.id}</p>
@@ -5672,11 +5916,13 @@ export const Pages = {
                                         <p class="text-xs text-slate-400">PNG, JPG up to 5MB</p>
                                     </div>
                                     <div id="preview-gallery" class="${isEdit ? '' : 'hidden'} grid grid-cols-5 gap-2 mt-4 pointer-events-none">
-                                        ${isEdit ? `
+                                        ${isEdit ? Array.from({ length: 5 }).map((_, i) => `
                                             <div class="aspect-square rounded-lg bg-slate-100 overflow-hidden relative group">
-                                                <img src="${State.getMediaUrl(productId, 0)}" class="w-full h-full object-cover">
+                                                <img loading="lazy" src="${State.getMediaUrl(productId, i)}" 
+                                                     onerror="this.parentElement.style.display='none'"
+                                                     class="w-full h-full object-cover">
                                             </div>
-                                        ` : ''}
+                                        `).join('') : ''}
                                     </div>
                                 </div>
                             </div>
@@ -5763,7 +6009,7 @@ export const Pages = {
                                         ${order.items.map(item => `
                                             <div class="flex justify-between items-center text-sm">
                                                 <div class="flex items-center gap-3">
-                                                    <img src="${State.getMediaUrl(item.product_id, 0)}" class="w-8 h-8 rounded object-cover">
+                                                    <img onerror="this.src='/assets/placeholder.png'; this.onerror=null;" loading="lazy" src="${State.getMediaUrl(item.product_id, 0)}" class="w-8 h-8 rounded object-cover">
                                                     <span class="font-medium text-slate-700">
                                                         <span class="w-6 text-slate-400">x${item.quantity}</span>
                                                         ${item.name}
@@ -6169,7 +6415,7 @@ export const Pages = {
                                 <button onclick="Router.navigate('/admin/reports')" class="border-2 border-white px-8 py-3 rounded-full font-bold hover:bg-white/10 transition-all">System Reports</button>
                             </div>
                         </div>
-                        <img src="https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=400" class="h-48 md:h-64 rounded-2xl shadow-2xl opacity-80 transform hover:-rotate-2 transition-all duration-500">
+                        <img loading="lazy" src="https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=400" class="h-48 md:h-64 rounded-2xl shadow-2xl opacity-80 transform hover:-rotate-2 transition-all duration-500">
                     </div>
 
                     <!-- Platform Stats -->
@@ -6282,7 +6528,7 @@ export const Pages = {
                         </div>
                     </div>
 
-                    <div class="glass-card rounded-2xl overflow-hidden">
+                    <div class="glass-card rounded-2xl overflow-hidden mb-12">
                         <div class="border-b border-slate-100 bg-slate-50/50 p-2 flex gap-1 overflow-x-auto scrollbar-hide">
                             <button onclick="State.fetchAdminUsers({ role: 'all' }).then(() => Router.refresh())" class="px-4 py-2 ${(!State.get().lastAdminFilters?.role || State.get().lastAdminFilters?.role === 'all') ? 'bg-blue-600 text-white' : 'hover:bg-slate-100 text-slate-600'} rounded-xl text-xs font-black uppercase tracking-widest transition-all">All Users</button>
                             <button onclick="State.fetchAdminUsers({ role: 'consumer' }).then(() => Router.refresh())" class="px-4 py-2 ${(State.get().lastAdminFilters?.role === 'consumer') ? 'bg-blue-600 text-white' : 'hover:bg-slate-100 text-slate-600'} rounded-xl text-xs font-black uppercase tracking-widest transition-all">Consumers</button>
@@ -6295,7 +6541,8 @@ export const Pages = {
                             <button onclick="State.fetchAdminUsers({ status: 'unverified' }).then(() => Router.refresh())" class="px-4 py-2 ${(State.get().lastAdminFilters?.status === 'unverified') ? 'bg-orange-600 text-white' : 'hover:bg-slate-100 text-orange-600'} rounded-xl text-xs font-black uppercase tracking-widest transition-all">Unverified</button>
                         </div>
                         
-                        <table class="w-full">
+                        <div class="overflow-x-auto">
+                            <table class="w-full min-w-[800px]">
                             <thead class="bg-slate-50">
                                 <tr>
                                     <th class="p-6 text-left">
@@ -6346,22 +6593,28 @@ export const Pages = {
                                                 </span>
                                             </td>
                                             <td class="p-6 text-right font-medium text-slate-600">-</td>
-                                            <td class="p-6 text-center">
-                                                <button onclick="window.editAdminUser(${user.id}, '${user.role}', ${user.is_verified})" class="p-2 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-blue-600 transition-colors" title="Edit User">
-                                                    <i data-lucide="edit" class="w-5 h-5"></i>
-                                                </button>
+                                            <td class="p-6">
+                                                <div class="flex items-center justify-center gap-2">
+                                                    <button onclick="window.editAdminUser(${user.id}, '${user.role}', ${user.is_verified})" class="p-2 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-blue-600 transition-colors" title="Edit User">
+                                                        <i data-lucide="edit" class="w-4 h-4"></i>
+                                                    </button>
+                                                    <button onclick="window.deleteAdminUser(${user.id})" class="p-2 hover:bg-red-50 rounded-lg text-slate-400 hover:text-red-600 transition-colors" title="Delete User">
+                                                        <i data-lucide="trash-2" class="w-4 h-4"></i>
+                                                    </button>
+                                                </div>
                                             </td>
                                         </tr>
                                     `;
             }).join('') : `
                                     <tr>
-                                        <td colspan="5" class="p-8 text-center text-slate-500">
+                                        <td colspan="6" class="p-8 text-center text-slate-500">
                                             No users found.
                                         </td>
                                     </tr>
                                 `}
                             </tbody>
                         </table>
+                    </div>
                         
                         <div class="p-6 border-t border-slate-100 flex justify-between items-center">
                             <p class="text-sm text-slate-500">Showing ${users.length} users</p>
@@ -6608,7 +6861,7 @@ export const Pages = {
                                 ${products.length > 0 ? products.map(product => `
                                     <tr class="hover:bg-slate-50/80 transition-colors">
                                         <td class="p-6 flex items-center gap-4">
-                                            <img src="${State.getMediaUrl(product.id, 0)}" class="w-12 h-12 rounded-xl object-cover bg-slate-100" onerror="this.src='/assets/placeholder.jpg'">
+                                            <img loading="lazy" src="${State.getMediaUrl(product.id, 0)}" class="w-12 h-12 rounded-xl object-cover bg-slate-100" onerror="this.src='/assets/placeholder.jpg'">
                                             <span class="font-bold text-slate-800">${product.name}</span>
                                         </td>
                                         <td class="p-6 text-sm text-slate-600">${product.category}</td>
@@ -6640,97 +6893,139 @@ export const Pages = {
         },
 
         marketing() {
-            return `
-                <div class="max-w-7xl mx-auto">
-                    <h1 class="text-3xl font-bold mb-8">Marketing & Promotions</h1>
+            const stats = State.get().marketingStats || { reach: { delivered: 0, seen: 0 }, conversion: 0, spend: 0 };
+            const coupons = State.get().coupons || [];
+            const campaigns = State.get().campaigns || [];
 
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-8 mb-8">
-                        <div class="md:col-span-2 glass-card p-6 rounded-2xl">
-                            <div class="flex justify-between items-center mb-6">
-                                <h3 class="font-bold text-lg">Active Campaigns</h3>
-                                <button class="text-blue-600 font-bold text-sm hover:underline">+ Create New</button>
+            return `
+                <div class="max-w-7xl mx-auto px-4 sm:px-0">
+                    <div class="flex items-center justify-between mb-8">
+                        <div>
+                            <h1 class="text-3xl font-bold text-slate-900 font-display">Marketing & Promotions</h1>
+                            <p class="text-slate-500">Manage campaigns, coupons, and track real-time reach.</p>
+                        </div>
+                        <button onclick="State.fetchMarketingData().then(() => Router.refresh(true))" class="p-3 bg-white border border-slate-200 rounded-2xl shadow-sm hover:shadow-md transition-all text-slate-600" title="Refresh Data">
+                            <i data-lucide="refresh-cw" class="w-5 h-5"></i>
+                        </button>
+                    </div>
+
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-12">
+                        <div class="lg:col-span-2 glass-card p-8 rounded-[2.5rem] border-white/50">
+                            <div class="flex justify-between items-center mb-8">
+                                <h3 class="font-bold text-xl text-slate-800">Active Campaigns</h3>
+                                <button onclick="window.createCampaign()" class="text-blue-600 font-bold text-sm bg-blue-50 px-4 py-2 rounded-xl hover:bg-blue-100 transition-all">+ New Campaign</button>
                             </div>
                             <div class="space-y-4">
-                                ${['Summer Sale 2026', 'New Customer Welcome', 'Black Friday Early Access'].map(campaign => `
-                                    <div class="border border-slate-100 rounded-xl p-4 flex flex-col sm:flex-row items-center sm:items-center justify-between gap-4 hover:shadow-md transition-all bg-white">
-                                        <div class="flex items-center gap-4">
-                                            <div class="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
-                                                <i data-lucide="megaphone" class="w-6 h-6 text-purple-600"></i>
+                                ${campaigns.length > 0 ? campaigns.map(campaign => `
+                                    <div class="group border border-slate-100 rounded-2xl p-5 flex flex-col sm:flex-row items-center justify-between gap-4 hover:border-blue-200 hover:shadow-xl hover:shadow-blue-500/5 transition-all bg-white">
+                                        <div class="flex items-center gap-5">
+                                            <div class="w-14 h-14 bg-purple-100 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform">
+                                                <i data-lucide="megaphone" class="w-7 h-7 text-purple-600"></i>
                                             </div>
                                             <div>
-                                                <h4 class="font-bold text-slate-800">${campaign}</h4>
-                                                <p class="text-xs text-slate-400">Ends in 5 days • 12k reach</p>
+                                                <h4 class="font-bold text-slate-800 text-lg">${campaign.title}</h4>
+                                                <p class="text-sm text-slate-400">Created: ${new Date(campaign.created_at).toLocaleDateString()} • ${campaign.reach_count || 0} reach</p>
                                             </div>
                                         </div>
                                         <div class="text-right">
-                                            <div class="flex items-center gap-2 mb-1">
+                                            <div class="flex items-center gap-2 mb-2 justify-end">
                                                 <span class="text-xs font-bold text-slate-500">ROI</span>
-                                                <span class="text-sm font-bold text-green-600">450%</span>
+                                                <span class="text-sm font-bold text-green-600">${campaign.roi || '0'}%</span>
                                             </div>
-                                            <div class="w-24 bg-slate-100 rounded-full h-1.5 ml-auto">
-                                                <div class="bg-green-500 h-1.5 rounded-full" style="width: 75%"></div>
+                                            <div class="w-32 bg-slate-100 rounded-full h-2">
+                                                <div class="bg-green-500 h-2 rounded-full" style="width: ${Math.min(100, campaign.roi || 0)}%"></div>
                                             </div>
                                         </div>
                                     </div>
-                                `).join('')}
+                                `).join('') : `
+                                    <div class="text-center py-12 text-slate-400 bg-slate-50 rounded-3xl border-2 border-dashed border-slate-200">
+                                        <i data-lucide="inbox" class="w-12 h-12 mx-auto mb-3 opacity-20"></i>
+                                        <p>No active campaigns found</p>
+                                    </div>
+                                `}
                             </div>
                         </div>
 
-                        <div class="glass-card p-6 rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-600 text-white">
-                            <h3 class="font-bold text-lg mb-4">Quick Stats</h3>
-                            <div class="space-y-6">
-                                <div>
-                                    <p class="text-blue-200 text-sm">Total Campaign Reach</p>
-                                    <p class="text-3xl font-bold">1.2M</p>
-                                </div>
-                                <div>
-                                    <p class="text-blue-200 text-sm">Conversion Rate</p>
-                                    <p class="text-3xl font-bold">2.4%</p>
-                                </div>
-                                <div>
-                                    <p class="text-blue-200 text-sm">Marketing Spend</p>
-                                    <p class="text-3xl font-bold">$45,000</p>
+                        <div class="glass-card p-8 rounded-[2.5rem] bg-slate-900 border-none text-white shadow-2xl relative overflow-hidden">
+                            <div class="relative z-10">
+                                <h3 class="font-bold text-xl mb-8">Reach Analytics</h3>
+                                <div class="space-y-10">
+                                    <div>
+                                        <p class="text-slate-400 text-xs font-bold uppercase tracking-widest mb-2">Total Delivered</p>
+                                        <p class="text-4xl font-black">${stats.reach.delivered.toLocaleString()}</p>
+                                        <div class="mt-4 flex items-center gap-2 text-xs text-green-400 bg-green-400/10 w-fit px-2 py-1 rounded-lg">
+                                            <i data-lucide="trending-up" class="w-3 h-3"></i> Real-time tracking active
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <p class="text-slate-400 text-xs font-bold uppercase tracking-widest mb-2">Total Seen</p>
+                                        <div class="flex items-baseline gap-3">
+                                            <p class="text-4xl font-black">${stats.reach.seen.toLocaleString()}</p>
+                                            <p class="text-blue-400 font-bold">(${stats.reach.delivered > 0 ? ((stats.reach.seen / stats.reach.delivered) * 100).toFixed(1) : 0}%)</p>
+                                        </div>
+                                        <div class="w-full bg-white/10 rounded-full h-2.5 mt-4 overflow-hidden">
+                                            <div class="bg-blue-500 h-2.5 rounded-full transition-all duration-1000" style="width: ${stats.reach.delivered > 0 ? (stats.reach.seen / stats.reach.delivered) * 100 : 0}%"></div>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <p class="text-slate-400 text-xs font-bold uppercase tracking-widest mb-2">Platform ROI</p>
+                                        <p class="text-4xl font-black text-green-400">${stats.conversion || '0.0'}%</p>
+                                    </div>
                                 </div>
                             </div>
+                            <!-- Decorative background -->
+                            <div class="absolute -bottom-20 -right-20 w-64 h-64 bg-blue-600/20 rounded-full blur-[100px]"></div>
                         </div>
                     </div>
 
-                    <div class="glass-card p-6 rounded-2xl">
-                        <div class="flex justify-between items-center mb-6">
-                            <h3 class="font-bold text-lg">Coupons & Vouchers</h3>
-                            <button class="bg-slate-900 text-white px-4 py-2 rounded-lg text-sm font-bold shadow-lg">Add Coupon</button>
+                    <div class="glass-card p-8 rounded-[2.5rem] border-white/50 mb-12 shadow-sm">
+                        <div class="flex flex-col sm:flex-row justify-between items-center mb-8 gap-4">
+                            <h3 class="font-bold text-xl text-slate-800">Coupons & Vouchers</h3>
+                            <button onclick="window.createCoupon()" class="w-full sm:w-auto bg-slate-900 text-white px-6 py-3 rounded-2xl text-sm font-bold shadow-xl shadow-slate-200 hover:bg-slate-800 transition-all flex items-center justify-center gap-2">
+                                <i data-lucide="plus-circle" class="w-4 h-4"></i> Add Coupon
+                            </button>
                         </div>
-                        <table class="w-full text-sm">
-                            <thead class="bg-slate-50 text-slate-500">
-                                <tr>
-                                    <th class="text-left p-4 rounded-l-lg">Code</th>
-                                    <th class="text-left p-4">Discount</th>
-                                    <th class="text-left p-4">Usage</th>
-                                    <th class="text-left p-4">Status</th>
-                                    <th class="text-right p-4 rounded-r-lg">Expiry</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                ${[
-                    { code: 'WELCOME10', disc: '10%', use: '1,240', status: 'Active', exp: 'Never' },
-                    { code: 'SUMMER25', disc: '25%', use: '450', status: 'Scheduled', exp: 'Jul 30' },
-                    { code: 'FLASH50', disc: '$50 Off', use: '89', status: 'Expired', exp: 'Jan 10' },
-                    { code: 'SHIPFREE', disc: 'Free Ship', use: '3,102', status: 'Active', exp: 'Dec 31' }
-                ].map(c => `
-                                    <tr class="border-b border-slate-50 last:border-0">
-                                        <td class="p-4 font-mono font-bold text-slate-800">${c.code}</td>
-                                        <td class="p-4">${c.disc}</td>
-                                        <td class="p-4 text-slate-600">${c.use}</td>
-                                        <td class="p-4">
-                                            <span class="px-2 py-1 rounded text-xs font-bold ${c.status === 'Active' ? 'bg-green-100 text-green-600' : c.status === 'expired' ? 'bg-red-100 text-red-600' : 'bg-blue-100 text-blue-600'}">
-                                                ${c.status}
-                                            </span>
-                                        </td>
-                                        <td class="p-4 text-right text-slate-500">${c.exp}</td>
+                        <div class="overflow-x-auto -mx-8 sm:mx-0">
+                            <table class="w-full text-sm">
+                                <thead class="bg-slate-50 text-slate-500 font-bold uppercase text-[10px] tracking-widest">
+                                    <tr>
+                                        <th class="text-left p-6 first:rounded-l-3xl">Code</th>
+                                        <th class="text-left p-6">Discount</th>
+                                        <th class="text-left p-6">Usage</th>
+                                        <th class="text-left p-6">Status</th>
+                                        <th class="text-left p-6">Expiry</th>
+                                        <th class="text-right p-6 last:rounded-r-3xl">Actions</th>
                                     </tr>
-                                `).join('')}
-                            </tbody>
-                        </table>
+                                </thead>
+                                <tbody class="divide-y divide-slate-50">
+                                    ${coupons.length > 0 ? coupons.map(c => `
+                                        <tr class="hover:bg-slate-50/50 transition-colors">
+                                            <td class="p-6 font-mono font-bold text-slate-800">${c.code}</td>
+                                            <td class="p-6 font-bold text-blue-600">${c.discount_type === 'percentage' ? c.discount_value + '%' : '₦' + Number(c.discount_value).toLocaleString()}</td>
+                                            <td class="p-6 text-slate-600">${c.usage_count} / ${c.usage_limit || '∞'}</td>
+                                            <td class="p-6">
+                                                <span class="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${c.is_active ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'}">
+                                                    ${c.is_active ? 'Active' : 'Paused'}
+                                                </span>
+                                            </td>
+                                            <td class="p-6 text-slate-500">${c.expires_at ? new Date(c.expires_at).toLocaleDateString() : 'Never'}</td>
+                                            <td class="p-6 text-right">
+                                                <div class="flex justify-end gap-2">
+                                                    <button onclick="window.pauseCoupon(${c.id})" class="p-2 hover:bg-white border border-transparent hover:border-slate-200 rounded-xl transition-all" title="${c.is_active ? 'Pause' : 'Resume'}">
+                                                        <i data-lucide="${c.is_active ? 'pause' : 'play'}" class="w-4 h-4 text-slate-400"></i>
+                                                    </button>
+                                                    <button onclick="window.deleteCoupon(${c.id})" class="p-2 hover:bg-red-50 rounded-xl transition-all" title="Delete">
+                                                        <i data-lucide="trash-2" class="w-4 h-4 text-red-500"></i>
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    `).join('') : `
+                                        <tr><td colspan="6" class="p-12 text-center text-slate-400">No coupons active</td></tr>
+                                    `}
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
 
                     <!-- Platform Broadcast -->
@@ -6745,15 +7040,26 @@ export const Pages = {
                             </div>
                         </div>
 
-                        <form onsubmit="event.preventDefault(); window.broadcastAdminNotification(this);" class="space-y-4">
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div class="space-y-2">
-                                    <label class="block text-sm font-bold text-slate-700">Notification Title</label>
-                                    <input type="text" name="title" placeholder="e.g., Flash Sale live now!" class="w-full p-3 bg-white border border-slate-200 rounded-xl outline-none focus:border-blue-500 shadow-sm" required>
+                        <form onsubmit="event.preventDefault(); window.broadcastAdminNotification(this);" class="space-y-6">
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                <div class="space-y-2 col-span-1 md:col-span-2">
+                                    <label class="block text-xs font-black text-slate-400 uppercase tracking-widest">Notification Title</label>
+                                    <input type="text" name="title" placeholder="e.g., Flash Sale live now!" class="w-full p-4 bg-white border border-slate-200 rounded-[1.25rem] outline-none focus:border-blue-500 shadow-sm transition-all" required>
                                 </div>
                                 <div class="space-y-2">
-                                    <label class="block text-sm font-bold text-slate-700">Target Role (Optional)</label>
-                                    <select name="role" class="w-full p-3 bg-white border border-slate-200 rounded-xl outline-none focus:border-blue-500 shadow-sm">
+                                    <label class="block text-xs font-black text-slate-400 uppercase tracking-widest">Delivery Channel</label>
+                                    <select name="channel" class="w-full p-4 bg-white border border-slate-200 rounded-[1.25rem] outline-none focus:border-blue-500 shadow-sm transition-all font-bold text-slate-700">
+                                        <option value="push">Push Notification (App + Device)</option>
+                                        <option value="email">Email Campaign (Brevo)</option>
+                                        <option value="both">Both (Email & Push)</option>
+                                    </select>
+                                </div>
+                            </div>
+                            
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div class="space-y-2">
+                                    <label class="block text-xs font-black text-slate-400 uppercase tracking-widest">Target Audience</label>
+                                    <select name="role" class="w-full p-4 bg-white border border-slate-200 rounded-[1.25rem] outline-none focus:border-blue-500 shadow-sm transition-all font-bold text-slate-700">
                                         <option value="">All Users</option>
                                         <option value="consumer">Consumers</option>
                                         <option value="business">Business Accounts</option>
@@ -6761,20 +7067,32 @@ export const Pages = {
                                         <option value="dropshipper">Dropshippers</option>
                                     </select>
                                 </div>
+                                <div class="space-y-2">
+                                    <label class="block text-xs font-black text-slate-400 uppercase tracking-widest">Alert Type</label>
+                                    <select name="type" class="w-full p-4 bg-white border border-slate-200 rounded-[1.25rem] outline-none focus:border-blue-500 shadow-sm transition-all font-bold text-slate-700">
+                                        <option value="info">Information (Blue)</option>
+                                        <option value="success">Success (Green)</option>
+                                        <option value="warning">Alert (Orange)</option>
+                                        <option value="critical">Critical (Red)</option>
+                                    </select>
+                                </div>
                             </div>
+
                             <div class="space-y-2">
-                                <label class="block text-sm font-bold text-slate-700">Message Body</label>
-                                <textarea name="message" rows="3" placeholder="Enter the detailed message here..." class="w-full p-3 bg-white border border-slate-200 rounded-xl outline-none focus:border-blue-500 shadow-sm" required></textarea>
+                                <label class="block text-xs font-black text-slate-400 uppercase tracking-widest">Deep Link Path (Optional)</label>
+                                <input type="text" name="link" placeholder="e.g., #/order/123 or #/products" class="w-full p-4 bg-white border border-slate-200 rounded-[1.25rem] outline-none focus:border-blue-500 shadow-sm transition-all font-mono text-xs">
+                                <p class="text-[9px] text-slate-400">If provided, users will be taken to this page when clicking the notification.</p>
                             </div>
-                            <div class="flex justify-end gap-3">
-                                <select name="type" class="p-3 bg-white border border-slate-200 rounded-xl outline-none text-sm font-bold shadow-sm">
-                                    <option value="info">ℹ️ Info (Blue)</option>
-                                    <option value="success">✅ Success (Green)</option>
-                                    <option value="warning">⚠️ Warning (Orange)</option>
-                                    <option value="error">🚨 Alert (Red)</option>
-                                </select>
-                                <button type="submit" class="bg-blue-600 text-white px-8 py-3 rounded-xl font-bold hover:bg-blue-700 transition-all shadow-lg shadow-blue-200 flex items-center gap-2">
-                                    <i data-lucide="send" class="w-4 h-4"></i> Send Broadcast
+
+                            <div class="space-y-2">
+                                <label class="block text-xs font-black text-slate-400 uppercase tracking-widest">Message Content</label>
+                                <textarea name="message" rows="4" placeholder="Type your announcement here..." class="w-full p-4 bg-white border border-slate-200 rounded-[1.25rem] outline-none focus:border-blue-500 shadow-sm transition-all" required></textarea>
+                            </div>
+
+                            <div class="flex items-center justify-between pt-4">
+                                <p class="text-xs text-slate-400 max-w-sm">Push notifications are tracked for delivery and seen rates. Emails are sent via Brevo (hello@xperiencestore.store).</p>
+                                <button type="submit" class="bg-blue-600 text-white px-10 py-4 rounded-[1.25rem] font-bold hover:bg-blue-700 transition-all shadow-xl shadow-blue-200 flex items-center justify-center gap-3">
+                                    <i data-lucide="send" class="w-5 h-5"></i> Launch Broadcast
                                 </button>
                             </div>
                         </form>
@@ -7120,103 +7438,6 @@ window.reportIssue = (orderId) => {
     }
 };
 
-window.handleImagePreview = (input) => {
-    const preview = document.getElementById('preview-gallery');
-    const placeholder = document.getElementById('image-upload-placeholder');
-    preview.innerHTML = '';
-
-    if (input.files && input.files.length > 0) {
-        placeholder.classList.add('hidden');
-        preview.classList.remove('hidden');
-        preview.innerHTML = ''; // Clear existing
-
-        Array.from(input.files).slice(0, 5).forEach(file => {
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                const img = document.createElement('div');
-                img.className = 'aspect-square rounded-lg bg-slate-100 overflow-hidden relative group';
-                img.innerHTML = `
-                    <img src="${e.target.result}" class="w-full h-full object-cover">
-                    <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                        <i data-lucide="check" class="text-white w-6 h-6"></i>
-                    </div>
-                `;
-                preview.appendChild(img);
-                lucide.createIcons(); // Re-run icons for new elements
-            };
-            reader.readAsDataURL(file);
-        });
-    } else {
-        placeholder.classList.remove('hidden');
-        preview.classList.add('hidden');
-    }
-};
-
-window.submitProduct = async (event, productId = null) => {
-    const form = event.target;
-    const isEdit = !!productId;
-
-    // Only require images for new products
-    const imageInput = form.querySelector('input[name="images"]');
-    if (!isEdit && imageInput.files.length === 0) {
-        Components.showNotification('Please upload at least one product image', 'error');
-        return;
-    }
-
-    const submitBtn = form.querySelector('button[type="submit"]');
-    const originalText = submitBtn.innerHTML;
-    submitBtn.disabled = true;
-    submitBtn.innerHTML = '<i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i> Saving...';
-    lucide.createIcons();
-
-    try {
-        const token = Auth.getToken();
-
-        let response;
-        if (isEdit) {
-            // For editing, we use JSON if no new images are selected, or we can use FormData anyway
-            const data = {};
-            const formData = new FormData(form);
-            formData.forEach((value, key) => {
-                if (key !== 'images') data[key] = value;
-            });
-
-            response = await fetch(`/api/products/${productId}`, {
-                method: 'PUT',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(data)
-            });
-        } else {
-            const formData = new FormData(form);
-            response = await fetch('/api/products', {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${token}`
-                },
-                body: formData
-            });
-        }
-
-        if (response.ok) {
-            Components.showNotification(isEdit ? 'Product updated successfully!' : 'Product created successfully!', 'success');
-            await State.fetchProducts();
-            Router.navigate('/supplier/products');
-        } else {
-            const error = await response.json();
-            Components.showNotification(error.message || 'Action failed', 'error');
-        }
-    } catch (error) {
-        console.error(error);
-        Components.showNotification('An error occurred. Please try again.', 'error');
-    } finally {
-        submitBtn.disabled = false;
-        submitBtn.innerHTML = originalText;
-        lucide.createIcons();
-    }
-};
 
 window.handlePayout = async (event) => {
     event.preventDefault();
@@ -7474,7 +7695,8 @@ window.broadcastAdminNotification = async (form) => {
         title: formData.get('title'),
         message: formData.get('message'),
         type: formData.get('type') || 'info',
-        role: formData.get('role') || null
+        role: formData.get('role') || null,
+        channel: formData.get('channel') || 'push'
     };
 
     if (!data.title || !data.message) {
@@ -7482,11 +7704,22 @@ window.broadcastAdminNotification = async (form) => {
         return;
     }
 
+    const submitBtn = form.querySelector('button[type="submit"]');
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<i data-lucide="loader" class="w-4 h-4 animate-spin"></i> Dispatching...';
+
     const success = await State.broadcastAdminNotification(data);
     if (success) {
         form.reset();
-        Components.showNotification('Broadcast sent to all eligible users', 'success');
+        Components.showNotification(`Broadcast launched via ${data.channel.toUpperCase()}`, 'success');
+        // Refresh analytics immediately
+        await State.fetchMarketingData();
+        Router.refresh(true);
     }
+
+    submitBtn.disabled = false;
+    submitBtn.innerHTML = '<i data-lucide="send" class="w-5 h-5"></i> Launch Broadcast';
+    if (window.lucide) lucide.createIcons();
 };
 
 window.adminUserSearch = debounce((search) => {
@@ -7517,5 +7750,189 @@ window.viewAdminLogArchive = async (key) => {
         } else {
             alert("Failed to load archive content");
         }
+    }
+};
+
+// ===========================================================
+// SUPPLIER PRODUCT HANDLERS
+// ===========================================================
+
+window.editProduct = (productId) => {
+    Router.navigate(`/supplier/products/edit?id=${productId}`);
+};
+
+window.deleteProduct = (productId) => {
+    Components.ConfirmModal(
+        'Delete Product',
+        'Are you sure you want to remove this product? This action cannot be undone.',
+        async () => {
+            const success = await State.deleteSupplierProduct(productId);
+            if (success) {
+                // Silent refresh to update the list without a flicker
+                Router.refresh(true);
+            }
+        },
+        'Delete'
+    );
+};
+
+window.handleImagePreview = (input) => {
+    const gallery = document.getElementById('preview-gallery');
+    const placeholder = document.getElementById('image-upload-placeholder');
+    if (!gallery) return;
+
+    if (input.files && input.files.length > 0) {
+        placeholder?.classList.add('hidden');
+        gallery.classList.remove('hidden');
+        gallery.innerHTML = ''; // Clear old previews (existing or previous selection)
+
+        Array.from(input.files).forEach(file => {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                gallery.insertAdjacentHTML('beforeend', `
+                    <div class="aspect-square rounded-lg bg-slate-100 overflow-hidden relative group">
+                        <img onerror="this.src='/assets/placeholder.png'; this.onerror=null;" loading="lazy" src="${e.target.result}" class="w-full h-full object-cover">
+                    </div>
+                `);
+            };
+            reader.readAsDataURL(file);
+        });
+    } else {
+        // If no files selected, we don't clear the gallery if we're in edit mode 
+        // because the existing images are still there until replaced.
+        // However, if it's a fresh add, we show placeholder.
+    }
+};
+
+window.submitProduct = async (event, productId) => {
+    const form = event.target;
+    const formData = new FormData(form);
+    const isEdit = !!productId;
+
+    const data = {
+        name: formData.get('name'),
+        description: formData.get('description'),
+        price: parseFloat(formData.get('price')),
+        stock: parseInt(formData.get('stock')),
+        category: formData.get('category'),
+        images: form.querySelector('input[name="images"]').files
+    };
+
+    const submitBtn = form.querySelector('button[type="submit"]');
+    const originalText = submitBtn.innerHTML;
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i> Saving...';
+    if (window.lucide) lucide.createIcons();
+
+    try {
+        let success;
+        if (isEdit) {
+            success = await State.updateSupplierProduct(productId, data);
+        } else {
+            success = await State.createSupplierProduct(data);
+        }
+
+        if (success) {
+            Components.showNotification(isEdit ? 'Product updated' : 'Product created', 'success');
+            Router.navigate('/supplier/products');
+        }
+    } finally {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = originalText;
+        if (window.lucide) lucide.createIcons();
+    }
+};
+
+// ===========================================================
+// MARKETING & COUPON HANDLERS
+// ===========================================================
+
+// ===========================================================
+// CART UX HANDLERS (PARTIAL RE-RENDERING)
+// ===========================================================
+
+window.updateCartUI = () => {
+    const cart = State.get().cart;
+    const total = State.getCartTotal();
+    
+    // If cart becomes empty, just full re-render
+    if (cart.length === 0) {
+        Router.navigate('/cart');
+        return;
+    }
+
+    const itemsContainer = document.getElementById('cart-items-list');
+    const summaryContainer = document.getElementById('cart-summary-details');
+    const countTitle = document.getElementById('cart-count-title');
+
+    if (itemsContainer) itemsContainer.innerHTML = Pages.consumer.renderCartItems(cart);
+    if (summaryContainer) summaryContainer.innerHTML = Pages.consumer.renderCartSummary(total);
+    if (countTitle) countTitle.textContent = cart.length;
+
+    // Update global cart badge
+    Components.updateCartBadge();
+    
+    if (window.lucide) lucide.createIcons();
+};
+
+window.updateCartQty = async (id, qty) => {
+    if (qty < 1) return;
+    await State.updateCartQuantity(id, qty);
+    window.updateCartUI();
+};
+
+
+window.removeCartItem = async (id) => {
+    await State.removeFromCart(id);
+    window.updateCartUI();
+};
+
+
+// ===========================================================
+// WISHLIST UX HANDLERS (PARTIAL RE-RENDERING)
+// ===========================================================
+
+window.updateWishlistUI = (productId, isInWishlist) => {
+    // 1. Update all heart icons globally
+    const heartIcons = document.querySelectorAll(`[onclick*="toggleWishlist(${productId})"] i, [onclick*="toggleWishlist('${productId}')"] i`);
+    heartIcons.forEach(icon => {
+        if (isInWishlist) {
+            icon.classList.add('fill-red-500', 'text-red-500');
+            icon.classList.remove('text-slate-400', 'text-slate-600');
+        } else {
+            icon.classList.remove('fill-red-500', 'text-red-500');
+            icon.classList.add('text-slate-400');
+        }
+    });
+
+    // 2. If we are on the wishlist page, refresh the grid
+    if (window.Router.getCurrentRoute()?.path === '/account/wishlist') {
+        window.updateWishlistGrid();
+    }
+};
+
+window.updateWishlistGrid = () => {
+    const wishlist = State.get().wishlist;
+    const container = document.querySelector('.grid-cols-1.sm\\:grid-cols-2.lg\\:grid-cols-4');
+    const title = document.querySelector('h1.text-3xl.font-bold');
+
+    if (title) title.textContent = `My Wishlist (${wishlist.length} items)`;
+
+    if (container) {
+        if (wishlist.length > 0) {
+            container.innerHTML = wishlist.map(product => Components.ProductCard(product)).join('');
+            if (window.lucide) lucide.createIcons();
+        } else {
+            // If empty, just full refresh to show empty state
+            Router.navigate('/account/wishlist');
+        }
+    }
+};
+
+window.deleteAdminUser = async (userId) => {
+    const success = await State.deleteAdminUser(userId);
+    if (success) {
+        await State.fetchAdminUsers();
+        Router.refresh();
     }
 };
