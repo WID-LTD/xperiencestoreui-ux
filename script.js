@@ -243,6 +243,7 @@ function initializeRouter() {
         '/payment-status': (params) => renderPage(Pages.paymentVerify(params)),
         '/payment/failed': () => renderPage(Pages.paymentFailed()),
         '/payment/cancelled': () => renderPage(Pages.paymentFailed()),
+        '/chat': () => Auth.requireLogin(() => renderPage(Pages.chat())),
 
         // Consumer routes
         '/products': () => renderPage(Pages.consumer.products()),

@@ -790,7 +790,10 @@ export const Components = {
 
     toggleMobileMenu() {
         const menu = document.getElementById('mobile-side-menu');
-        menu.classList.toggle('active');
+        if (menu) {
+            const isActive = menu.classList.toggle('active');
+            document.body.style.overflow = isActive ? 'hidden' : '';
+        }
     },
 
     // "More to Love" Section (Horizontal Scroll)

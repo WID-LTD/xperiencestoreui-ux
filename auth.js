@@ -266,5 +266,16 @@ export const Auth = {
             alert(`Access restricted to ${role} account`);
         }
         window.location.hash = '#/';
+    },
+
+    requireLogin: (callback) => {
+        if (Auth.isLoggedIn()) {
+            return callback();
+        }
+        localStorage.setItem('authRedirect', window.location.hash.replace('#', ''));
+        if (window.Components && window.Components.showNotification) {
+            window.Components.showNotification('Please login to continue', 'info');
+        }
+        window.location.hash = '#/login';
     }
 };

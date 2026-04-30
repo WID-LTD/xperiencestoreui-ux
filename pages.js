@@ -13,6 +13,112 @@ import { Auth } from './auth.js?v=3.1.5';
 
 export const Pages = {
     // ==================== SHARED PAGES ====================
+    chat() {
+        return `
+            <div class="max-w-6xl mx-auto py-8 px-4 h-[calc(100vh-160px)] flex flex-col">
+                <div class="flex items-center justify-between mb-6">
+                    <div>
+                        <h1 class="text-3xl font-black text-slate-900 tracking-tight">Conversations</h1>
+                        <p class="text-slate-500 font-medium">Real-time support and supplier messaging</p>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <span class="flex items-center gap-2 px-3 py-1.5 bg-green-100 text-green-700 rounded-full text-xs font-bold">
+                            <span class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
+                            Live Support Online
+                        </span>
+                    </div>
+                </div>
+
+                <div class="flex-1 bg-white rounded-[2.5rem] shadow-xl border border-slate-100 overflow-hidden flex flex-col md:flex-row">
+                    <!-- Sidebar: Conversations List -->
+                    <div class="w-full md:w-80 border-r border-slate-100 flex flex-col bg-slate-50/30">
+                        <div class="p-4 border-b border-slate-100">
+                            <div class="relative">
+                                <i data-lucide="search" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400"></i>
+                                <input type="text" placeholder="Search chats..." class="w-full pl-10 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-sm outline-none focus:border-blue-500 transition-all">
+                            </div>
+                        </div>
+                        <div id="chat-list" class="flex-1 overflow-y-auto p-2 space-y-1">
+                            <!-- Populated by Chat.initPage() -->
+                            <div class="animate-pulse p-4 space-y-4">
+                                <div class="flex gap-3">
+                                    <div class="w-12 h-12 bg-slate-200 rounded-full"></div>
+                                    <div class="flex-1 space-y-2 py-1">
+                                        <div class="h-4 bg-slate-200 rounded w-3/4"></div>
+                                        <div class="h-3 bg-slate-200 rounded w-1/2"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Main Chat Area -->
+                    <div class="flex-1 flex flex-col bg-white relative">
+                        <div id="chat-empty-state" class="absolute inset-0 flex flex-col items-center justify-center text-center p-8 bg-white z-10">
+                            <div class="w-24 h-24 bg-blue-50 rounded-full flex items-center justify-center text-blue-600 mb-6">
+                                <i data-lucide="message-square" class="w-10 h-10"></i>
+                            </div>
+                            <h3 class="text-xl font-bold text-slate-800 mb-2">Select a Conversation</h3>
+                            <p class="text-slate-500 max-w-xs">Choose a chat from the left to start messaging. You can chat with support or suppliers.</p>
+                        </div>
+
+                        <div id="chat-main" class="flex-1 flex flex-col hidden">
+                            <!-- Chat Header -->
+                            <div class="p-4 border-b border-slate-100 flex items-center justify-between bg-white/80 backdrop-blur-md">
+                                <div class="flex items-center gap-3">
+                                    <div class="w-10 h-10 rounded-full bg-blue-600 flex items-center justify-center text-white font-bold" id="active-chat-avatar">S</div>
+                                    <div>
+                                        <p class="font-bold text-slate-900 leading-tight" id="active-chat-name">Support Agent</p>
+                                        <p class="text-[10px] text-green-500 font-bold uppercase tracking-wider" id="active-chat-status">Online</p>
+                                    </div>
+                                </div>
+                                <div class="flex gap-2">
+                                    <button class="p-2 hover:bg-slate-50 rounded-lg text-slate-400"><i data-lucide="phone" class="w-5 h-5"></i></button>
+                                    <button class="p-2 hover:bg-slate-50 rounded-lg text-slate-400"><i data-lucide="more-vertical" class="w-5 h-5"></i></button>
+                                </div>
+                            </div>
+
+                            <!-- Messages Area -->
+                            <div id="chat-messages" class="flex-1 overflow-y-auto p-6 space-y-4 bg-slate-50/50">
+                                <!-- Populated by Chat.loadMessages() -->
+                            </div>
+
+                            <!-- Input Area -->
+                            <div class="p-4 bg-white border-t border-slate-100">
+                                <div id="chat-reply-preview" class="hidden mb-3 p-3 bg-blue-50 rounded-xl flex items-start justify-between">
+                                    <div class="flex-1">
+                                        <p class="text-[10px] font-bold text-blue-600 uppercase tracking-widest mb-1">Replying to</p>
+                                        <p class="text-sm text-slate-600 line-clamp-1" id="reply-text"></p>
+                                    </div>
+                                    <button onclick="Chat.cancelReply()" class="text-slate-400 hover:text-slate-600"><i data-lucide="x" class="w-4 h-4"></i></button>
+                                </div>
+                                
+                                <form id="chat-form" onsubmit="window.handleChatSubmit(event)" class="flex items-end gap-3">
+                                    <div class="flex-1 bg-slate-50 rounded-2xl border-2 border-transparent focus-within:border-blue-500 focus-within:bg-white transition-all flex items-end p-2 px-4 gap-3">
+                                        <button type="button" class="p-1 text-slate-400 hover:text-blue-600 mb-1"><i data-lucide="plus-circle" class="w-6 h-6"></i></button>
+                                        <textarea id="chat-input" placeholder="Write a message..." rows="1" class="flex-1 bg-transparent border-none outline-none py-2 text-sm resize-none max-h-32 min-h-[40px]"></textarea>
+                                        <button type="button" class="p-1 text-slate-400 hover:text-blue-600 mb-1"><i data-lucide="smile" class="w-6 h-6"></i></button>
+                                    </div>
+                                    <button type="submit" class="w-12 h-12 bg-blue-600 text-white rounded-2xl flex items-center justify-center shadow-lg shadow-blue-200 hover:bg-blue-700 hover:-translate-y-1 transition-all">
+                                        <i data-lucide="send" class="w-6 h-6"></i>
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <script>
+                // Auto-init logic when page enters viewport
+                setTimeout(() => {
+                    if (window.Chat) {
+                        window.Chat.initPage();
+                    }
+                }, 100);
+            </script>
+        `;
+    },
 
     paymentVerify(params) {
         // Parse possible Paystack root URL query parameters

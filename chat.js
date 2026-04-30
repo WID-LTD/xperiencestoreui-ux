@@ -1,19 +1,18 @@
-// GIGO WhatsApp-style Chat Module
+/**
+ * chat.js - Lightweight Chat System
+ * Handles real-time messaging, conversation management, and UI logic
+ */
+
 const Chat = {
     socket: null,
     conversations: [],
     currentConversationId: null,
-    isOpen: false,
-    messageQueue: [],
     replyTo: null,
-    holdTimeout: null,
-    touchStartX: 0,
-    activeSwipeId: null,
 
     async init() {
         if (!Auth.isLoggedIn()) return;
         
-        // Load Socket.io client
+        // Load Socket.io client if not present
         if (typeof io === 'undefined') {
             const script = document.createElement('script');
             script.src = 'https://cdn.socket.io/4.7.2/socket.io.min.js';
@@ -23,14 +22,11 @@ const Chat = {
             this.connect();
         }
 
-        this.renderFloatingButton();
         this.requestNotificationPermission();
-        
-        window.addEventListener('online', () => this.processQueue());
     },
 
     requestNotificationPermission() {
-        if ("Notification" in window) {
+        if ("Notification" in window && Notification.permission === "default") {
             Notification.requestPermission();
         }
     },
@@ -39,157 +35,217 @@ const Chat = {
         const session = Auth.getUserSession();
         if (!session || !session.token) return;
 
-        this.socket = io(window.API_BASE.replace('/api', ''), {
-            query: { token: session.token }
+        // Connect to root namespace (strip /api if present)
+        const socketUrl = window.API_BASE.replace('/api', '');
+        this.socket = io(socketUrl, {
+            query: { token: session.token },
+            transports: ['websocket', 'polling']
         });
 
         this.socket.on('connect', () => {
-            console.log('[CHAT] Connected');
-            this.processQueue();
+            console.log('[CHAT] Connected to server');
         });
 
         this.socket.on('new_message', (message) => {
-            if (this.currentConversationId === message.conversation_id) {
-                this.appendMessage(message);
-                this.markAsRead(message.id);
-            } else {
-                this.showPushNotification(message);
-                this.markAsDelivered(message.id);
-            }
+            this.handleIncomingMessage(message);
         });
 
         this.socket.on('message_status', ({ messageId, status }) => {
-            const statusEl = document.querySelector(`[data-msg-id="${messageId}"] .msg-status`);
-            if (statusEl) {
-                this.updateStatusUI(statusEl, status);
-            }
+            this.updateMessageStatus(messageId, status);
         });
 
-        this.fetchConversations();
+        this.socket.on('disconnect', () => {
+            console.log('[CHAT] Disconnected');
+        });
     },
 
-    async markAsDelivered(messageId) {
-        this.socket.emit('update_status', { messageId, status: 'delivered' });
+    async initPage() {
+        console.log('[CHAT] Initializing Chat Page UI');
+        this.renderConversations();
+        this.setupInputHandlers();
+        await this.fetchConversations();
     },
 
-    async markAsRead(messageId) {
-        this.socket.emit('update_status', { messageId, status: 'seen' });
+    async fetchConversations() {
+        try {
+            const response = await fetch(window.apiUrl('/api/chat/conversations'), {
+                headers: Auth.getAuthHeaders()
+            });
+            if (response.ok) {
+                this.conversations = await response.json();
+                this.renderConversations();
+            }
+        } catch (err) {
+            console.error('[CHAT] Failed to fetch conversations:', err);
+        }
     },
 
-    updateStatusUI(el, status) {
-        let icon = 'check';
-        let text = 'Sent';
-        let colorClass = '';
+    renderConversations() {
+        const listContainer = document.getElementById('chat-list');
+        if (!listContainer) return;
 
-        if (status === 'delivered') {
-            icon = 'check-check';
-            text = 'Delivered';
-        } else if (status === 'seen') {
-            icon = 'check-check';
-            text = 'Seen';
-            colorClass = 'text-blue-500';
+        if (this.conversations.length === 0) {
+            listContainer.innerHTML = `
+                <div class="p-8 text-center text-slate-400">
+                    <p class="text-xs font-bold uppercase tracking-widest mb-2">No Active Chats</p>
+                    <p class="text-[10px]">Start a conversation from a product or supplier page.</p>
+                </div>
+            `;
+            return;
         }
 
-        el.innerHTML = `<span class="mr-1">${text}</span> <i data-lucide="${icon}" class="w-3 h-3 ${colorClass}"></i>`;
-        lucide.createIcons();
+        listContainer.innerHTML = this.conversations.map(conv => {
+            const isActive = this.currentConversationId === conv.id;
+            const lastMsg = conv.last_message || { content: 'No messages yet', created_at: conv.created_at };
+            const otherUser = conv.participants?.find(p => p.id !== Auth.getUserSession().id) || { name: 'Chat' };
+
+            return `
+                <div onclick="Chat.selectConversation(${conv.id})" 
+                     class="p-4 rounded-2xl cursor-pointer transition-all flex gap-3 hover:bg-white hover:shadow-md ${isActive ? 'bg-white shadow-md border-l-4 border-blue-600' : 'bg-transparent'}">
+                    <div class="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold shrink-0">
+                        ${otherUser.name.charAt(0).toUpperCase()}
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <div class="flex justify-between items-center mb-0.5">
+                            <h4 class="font-bold text-sm text-slate-800 truncate">${otherUser.name}</h4>
+                            <span class="text-[9px] text-slate-400">${this.formatTime(lastMsg.created_at)}</span>
+                        </div>
+                        <p class="text-[11px] text-slate-500 truncate">${lastMsg.content}</p>
+                    </div>
+                    ${conv.unread_count > 0 ? `<div class="w-2 h-2 bg-blue-600 rounded-full mt-2"></div>` : ''}
+                </div>
+            `;
+        }).join('');
     },
 
-    renderFloatingButton() {
-        const session = Auth.getUserSession();
-        if (!session) return;
-        const role = session.role || 'consumer';
+    async selectConversation(id) {
+        this.currentConversationId = id;
         
-        const headerIcon = document.getElementById('header-chat-icon');
-        if (headerIcon) {
-            headerIcon.classList.remove('hidden');
+        // UI Updates
+        document.getElementById('chat-empty-state')?.classList.add('hidden');
+        const mainArea = document.getElementById('chat-main');
+        if (mainArea) mainArea.classList.remove('hidden');
+
+        const conv = this.conversations.find(c => c.id === id);
+        if (conv) {
+            const otherUser = conv.participants?.find(p => p.id !== Auth.getUserSession().id) || { name: 'Support' };
+            document.getElementById('active-chat-name').textContent = otherUser.name;
+            document.getElementById('active-chat-avatar').textContent = otherUser.name.charAt(0).toUpperCase();
         }
 
-        const existing = document.getElementById('gigo-chat-trigger');
-        if (existing) existing.remove();
+        this.renderConversations(); // Update active state in list
+        await this.loadMessages(id);
+    },
 
-        const btn = document.createElement('div');
-        btn.id = 'gigo-chat-trigger';
-        btn.className = 'fixed bottom-32 right-6 w-14 h-14 bg-[#25d366] rounded-full shadow-2xl flex items-center justify-center cursor-pointer z-50 hover:scale-110 transition-transform';
-        btn.innerHTML = `<i data-lucide="message-circle" class="text-white w-7 h-7"></i>`;
-        btn.onclick = () => this.toggleChat();
-        document.body.appendChild(btn);
+    async loadMessages(conversationId) {
+        const container = document.getElementById('chat-messages');
+        if (!container) return;
+
+        container.innerHTML = '<div class="flex justify-center py-10"><div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div></div>';
+
+        try {
+            const response = await fetch(window.apiUrl(`/api/chat/conversations/${conversationId}/messages`), {
+                headers: Auth.getAuthHeaders()
+            });
+            if (response.ok) {
+                const messages = await response.json();
+                this.renderMessages(messages);
+                this.scrollToBottom();
+            }
+        } catch (err) {
+            console.error('[CHAT] Failed to load messages:', err);
+        }
+    },
+
+    renderMessages(messages) {
+        const container = document.getElementById('chat-messages');
+        if (!container) return;
+
+        const myId = Auth.getUserSession().id;
+        container.innerHTML = messages.map(msg => this.getMessageHtml(msg, myId)).join('');
         lucide.createIcons();
     },
 
-    toggleChat() {
-        this.isOpen = !this.isOpen;
-        if (this.isOpen) {
-            this.renderChatWindow();
-        } else {
-            const win = document.getElementById('gigo-chat-window');
-            if (win) win.remove();
-        }
-    },
-
-    renderChatWindow() {
-        const win = document.createElement('div');
-        win.id = 'gigo-chat-window';
-        win.className = 'fixed bottom-0 right-0 w-full h-full md:bottom-40 md:right-6 md:w-96 md:h-[600px] bg-[#efe7de] md:rounded-2xl shadow-2xl z-50 flex flex-col overflow-hidden animate-in slide-in-from-bottom-4';
-        win.innerHTML = `
-            <div class="p-3 bg-[#075e54] text-white flex items-center justify-between shrink-0">
-                <div class="flex items-center gap-3">
-                    <button class="md:hidden p-1" onclick="Chat.toggleChat()"><i data-lucide="arrow-left"></i></button>
-                    <div class="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center overflow-hidden">
-                        <img src="https://ui-avatars.com/api/?name=GIGO&background=random" class="w-full h-full object-cover">
+    getMessageHtml(msg, myId) {
+        const isMe = msg.sender_id === myId;
+        const time = this.formatTime(msg.created_at);
+        
+        return `
+            <div class="flex ${isMe ? 'justify-end' : 'justify-start'} animate-in fade-in slide-in-from-bottom-2 duration-300">
+                <div class="max-w-[80%] ${isMe ? 'bg-blue-600 text-white rounded-l-2xl rounded-tr-2xl' : 'bg-white text-slate-800 rounded-r-2xl rounded-tl-2xl shadow-sm'} p-3 px-4">
+                    ${msg.reply_to_content ? `<div class="mb-2 p-2 bg-black/10 rounded-lg text-[10px] italic border-l-2 border-white/30">${msg.reply_to_content}</div>` : ''}
+                    <p class="text-sm leading-relaxed">${msg.content}</p>
+                    <div class="flex items-center justify-end gap-1 mt-1 opacity-70">
+                        <span class="text-[9px] font-medium">${time}</span>
+                        ${isMe ? `<i data-lucide="${this.getStatusIcon(msg.status)}" class="w-3 h-3"></i>` : ''}
                     </div>
-                    <div>
-                        <h3 class="font-bold text-sm">GIGO Shopping Assistant</h3>
-                        <p class="text-[10px] text-green-100">online</p>
-                    </div>
-                </div>
-                <div class="flex gap-4">
-                    <i data-lucide="video" class="w-5 h-5 opacity-80"></i>
-                    <i data-lucide="phone" class="w-5 h-5 opacity-80"></i>
-                    <i data-lucide="more-vertical" class="w-5 h-5 opacity-80"></i>
-                </div>
-            </div>
-            
-            <div id="chat-messages" class="flex-1 overflow-y-auto p-4 flex flex-col gap-2">
-                <div class="self-center bg-[#dcf8c6] text-[10px] px-2 py-1 rounded shadow-sm mb-4 uppercase tracking-wider">Messages are end-to-end encrypted</div>
-            </div>
-
-            <div id="reply-bar" class="hidden px-4 py-2 bg-white border-t border-slate-200">
-                <div class="reply-preview flex justify-between items-start">
-                    <div id="reply-content" class="line-clamp-1"></div>
-                    <button onclick="Chat.cancelReply()"><i data-lucide="x" class="w-4 h-4"></i></button>
-                </div>
-            </div>
-
-            <div class="wa-input-container shrink-0">
-                <button class="plus-btn" onclick="Chat.toggleMediaPicker()"><i data-lucide="plus" class="w-6 h-6"></i></button>
-                <div class="wa-input-wrapper">
-                    <i data-lucide="smile" class="w-6 h-6 text-slate-400 mr-2 mb-1"></i>
-                    <textarea id="chat-input" placeholder="Type a message" rows="1"></textarea>
-                </div>
-                <div id="send-btn" class="wa-btn" onclick="Chat.sendMessage()">
-                    <i data-lucide="send" class="w-5 h-5"></i>
-                </div>
-            </div>
-
-            <div id="media-picker" class="media-picker hidden animate-in slide-in-from-bottom-2">
-                <div class="media-item" onclick="Chat.pickFile('image/*')">
-                    <div class="media-icon bg-purple-500"><i data-lucide="image"></i></div>
-                    <span>Gallery</span>
-                </div>
-                <div class="media-item" onclick="Chat.pickFile('video/*')">
-                    <div class="media-icon bg-red-500"><i data-lucide="video"></i></div>
-                    <span>Video</span>
-                </div>
-                <div class="media-item" onclick="Chat.showProductPicker()">
-                    <div class="media-icon bg-blue-500"><i data-lucide="package"></i></div>
-                    <span>Product</span>
                 </div>
             </div>
         `;
-        document.body.appendChild(win);
-        lucide.createIcons();
+    },
 
+    getStatusIcon(status) {
+        if (status === 'seen') return 'check-check';
+        if (status === 'delivered') return 'check';
+        return 'clock';
+    },
+
+    handleIncomingMessage(msg) {
+        if (this.currentConversationId === msg.conversation_id) {
+            const container = document.getElementById('chat-messages');
+            if (container) {
+                const myId = Auth.getUserSession().id;
+                container.insertAdjacentHTML('beforeend', this.getMessageHtml(msg, myId));
+                this.scrollToBottom();
+                lucide.createIcons();
+                // Mark as read via socket
+                this.socket.emit('mark_read', { conversationId: msg.conversation_id, messageId: msg.id });
+            }
+        } else {
+            this.showNotification(msg);
+        }
+        this.fetchConversations(); // Refresh list to update previews
+    },
+
+    async sendMessage() {
         const input = document.getElementById('chat-input');
+        const content = input.value.trim();
+        if (!content || !this.currentConversationId) return;
+
+        const payload = {
+            conversation_id: this.currentConversationId,
+            content,
+            reply_to_id: this.replyTo?.id || null,
+            reply_to_content: this.replyTo?.content || null
+        };
+
+        // Reset input
+        input.value = '';
+        input.style.height = 'auto';
+        this.cancelReply();
+
+        try {
+            const response = await fetch(window.apiUrl('/api/chat/messages'), {
+                method: 'POST',
+                headers: { ...Auth.getAuthHeaders(), 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            if (response.ok) {
+                const sentMsg = await response.json();
+                // We'll get it back via socket, but we can optimistically append if we want
+                // For now, socket will handle the real-time update
+            }
+        } catch (err) {
+            console.error('[CHAT] Failed to send message:', err);
+            Components.showNotification('Failed to send message', 'error');
+        }
+    },
+
+    setupInputHandlers() {
+        const input = document.getElementById('chat-input');
+        if (!input) return;
+
         input.addEventListener('input', function() {
             this.style.height = 'auto';
             this.style.height = (this.scrollHeight) + 'px';
@@ -203,165 +259,37 @@ const Chat = {
         });
     },
 
-    appendMessage(msg) {
-        const container = document.getElementById('chat-messages');
-        if (!container) return;
-
-        const isMe = msg.sender_id === Auth.getUserSession().id;
-        const bubble = document.createElement('div');
-        bubble.className = `chat-bubble ${isMe ? 'me' : 'other'}`;
-        bubble.setAttribute('data-msg-id', msg.id || '');
-        
-        let replyHtml = '';
-        if (msg.reply_to_content) {
-            replyHtml = `<div class="reply-preview mb-1 opacity-70">${msg.reply_to_content}</div>`;
-        }
-
-        bubble.innerHTML = `
-            ${replyHtml}
-            <div class="msg-content">${msg.content}</div>
-            <div class="msg-status" id="status-${msg.id}">
-                ${new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                ${isMe ? `<i data-lucide="check" class="w-3 h-3 ml-1"></i>` : ''}
-            </div>
-        `;
-
-        // Interaction Listeners
-        bubble.onmousedown = (e) => this.startHold(e, msg);
-        bubble.ontouchstart = (e) => {
-            this.startHold(e, msg);
-            this.touchStartX = e.touches[0].clientX;
-            this.activeSwipeId = msg.id;
-        };
-        bubble.ontouchmove = (e) => this.handleSwipe(e, msg, bubble);
-        bubble.ontouchend = () => this.clearHold();
-        bubble.onmouseup = () => this.clearHold();
-
-        container.appendChild(bubble);
-        container.scrollTop = container.scrollHeight;
-        lucide.createIcons();
-
-        if (isMe && msg.id) {
-             // Mock status update for immediate feedback
-             setTimeout(() => this.updateStatusUI(document.getElementById(`status-${msg.id}`), 'delivered'), 1000);
-        }
-    },
-
-    startHold(e, msg) {
-        this.holdTimeout = setTimeout(() => this.showContextMenu(e, msg), 500);
-    },
-
-    clearHold() {
-        clearTimeout(this.holdTimeout);
-    },
-
-    handleSwipe(e, msg, el) {
-        const currentX = e.touches[0].clientX;
-        const diffX = currentX - this.touchStartX;
-        if (diffX > 50) {
-            el.style.transform = `translateX(${Math.min(diffX, 80)}px)`;
-            if (diffX > 70) {
-                this.setReply(msg);
-                el.style.transform = '';
-            }
-        }
-    },
-
-    setReply(msg) {
-        this.replyTo = msg;
-        const bar = document.getElementById('reply-bar');
-        const content = document.getElementById('reply-content');
-        content.innerText = msg.content;
-        bar.classList.remove('hidden');
-    },
-
     cancelReply() {
         this.replyTo = null;
-        document.getElementById('reply-bar').classList.add('hidden');
+        document.getElementById('chat-reply-preview')?.classList.add('hidden');
     },
 
-    showContextMenu(e, msg) {
-        e.preventDefault();
-        const existing = document.querySelector('.chat-context-menu');
-        if (existing) existing.remove();
-
-        const menu = document.createElement('div');
-        menu.className = 'chat-context-menu';
-        menu.style.left = `${e.clientX || e.touches[0].clientX}px`;
-        menu.style.top = `${e.clientY || e.touches[0].clientY}px`;
-        
-        menu.innerHTML = `
-            <div class="chat-context-item" onclick="Chat.copyText('${msg.content}')"><i data-lucide="copy" class="w-4 h-4"></i> Copy</div>
-            <div class="chat-context-item" onclick="Chat.setReply(${JSON.stringify(msg).replace(/"/g, '&quot;')})"><i data-lucide="reply" class="w-4 h-4"></i> Reply</div>
-            <div class="chat-context-item"><i data-lucide="forward" class="w-4 h-4"></i> Forward</div>
-            <div class="chat-context-item text-red-500"><i data-lucide="trash-2" class="w-4 h-4"></i> Delete</div>
-        `;
-        document.body.appendChild(menu);
-        lucide.createIcons();
-
-        document.addEventListener('click', () => menu.remove(), { once: true });
+    scrollToBottom() {
+        const container = document.getElementById('chat-messages');
+        if (container) container.scrollTop = container.scrollHeight;
     },
 
-    copyText(text) {
-        navigator.clipboard.writeText(text);
-        if (window.Components?.showNotification) Components.showNotification('Copied to clipboard', 'info');
+    formatTime(date) {
+        const d = new Date(date);
+        return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     },
 
-    toggleMediaPicker() {
-        const p = document.getElementById('media-picker');
-        p.classList.toggle('hidden');
-    },
-
-    async sendMessage() {
-        const input = document.getElementById('chat-input');
-        const content = input.value.trim();
-        if (!content) return;
-
-        const payload = {
-            content,
-            reply_to_id: this.replyTo ? this.replyTo.id : null,
-            reply_to_content: this.replyTo ? this.replyTo.content : null
-        };
-
-        input.value = '';
-        input.style.height = 'auto';
-        this.cancelReply();
-
-        this.appendMessage({
-            sender_id: Auth.getUserSession().id,
-            content,
-            created_at: new Date(),
-            reply_to_content: payload.reply_to_content
-        });
-
-        try {
-            await fetch(window.apiUrl('/api/chat/messages'), {
-                method: 'POST',
-                headers: { ...Auth.getAuthHeaders(), 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
+    showNotification(msg) {
+        if ("Notification" in window && Notification.permission === "granted") {
+            new Notification("New Message", {
+                body: msg.content,
+                icon: 'assets/logo.png'
             });
-        } catch (err) {
-            console.error('[CHAT] Send error:', err);
         }
-    },
-
-    showPushNotification(msg) {
-        if (!("Notification" in window) || Notification.permission !== "granted") return;
-        
-        const n = new Notification("New Message from GIGO", {
-            body: msg.content,
-            icon: '/assets/logo.png'
-        });
-        n.onclick = () => {
-            window.focus();
-            this.toggleChat();
-            if (!this.isOpen) this.toggleChat();
-        };
-    },
-
-    async processQueue() {
-        // Implementation from previous turn
+        Components.showNotification('New message received', 'info');
     }
 };
 
+// Global Handlers
+window.handleChatSubmit = (e) => {
+    e.preventDefault();
+    Chat.sendMessage();
+};
+
 window.Chat = Chat;
+Chat.init();
