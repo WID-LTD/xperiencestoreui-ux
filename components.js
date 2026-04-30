@@ -124,6 +124,9 @@ export const Components = {
                                     <i data-lucide="shopping-cart" class="w-5 h-5"></i>
                                     <span class="sm:hidden font-bold">Add to Cart</span>
                                 </button>
+                                <button onclick="event.stopPropagation(); Components.buyNowAction(${product.id})" class="bg-slate-900 text-white px-4 py-2 rounded-lg text-xs font-bold hover:bg-slate-800 transition-all">
+                                    Buy Now
+                                </button>
                                 ${state.userRole === 'dropshipper' ? `
                                     <button onclick="event.stopPropagation(); State.addToStore(${product.id})" class="bg-purple-600 text-white p-3 rounded-2xl hover:bg-purple-700 transition-all shadow-lg shadow-purple-100" title="Add to Store">
                                         <i data-lucide="plus" class="w-5 h-5"></i>
