@@ -222,6 +222,26 @@ export const State = {
         return this._state.products;
     },
 
+    // Fetch metadata (total products, categories, lightweight map)
+    async fetchMetadata() {
+        try {
+            const res = await fetch(window.apiUrl('/api/products/metadata'));
+            if (res.ok) {
+                const data = await res.json();
+                this.set({
+                    productStats: { total: data.total, categories: data.categories },
+                    categoryMetadata: data.categories,
+                    productMap: data.productMap,
+                    fetchedMetadata: true
+                });
+                return data;
+            }
+        } catch (err) {
+            console.error('Fetch metadata error:', err);
+        }
+        return null;
+    },
+
     // Fetch a specific page of products for the products/category page
     async fetchProductPage(filters = {}) {
         this._state.categoryLoading = true;
@@ -371,6 +391,9 @@ export const State = {
             }
         }
 
+        // Fetch metadata immediately (Smart Metadata)
+        this.fetchMetadata();
+
         // For logged-in users: refresh cart & wishlist from DB in background
         if (isLoggedIn()) {
             this._loadCartFromDB();
@@ -460,8 +483,12 @@ export const State = {
     },
 
     getCategories() {
+        // Prefer metadata if available (it's faster and covers everything)
+        if (this._state.categoryMetadata) return this._state.categoryMetadata;
+
+        // Fallback to deriving from currently loaded products
         if (!this._state.products) return [];
-        const categories = [...new Set(this._state.products.map(p => p.category))];
+        const categories = [...new Set(this._state.products.map(p => p.category).filter(Boolean))];
         return categories.map(c => ({
             name: c,
             slug: c.toLowerCase().replace(/ /g, '-'),

@@ -11,6 +11,8 @@ import { Components } from './components.js?v=3.1.5';
 import { Pages } from './pages.js?v=3.1.5';
 import { Payment } from './payment.js?v=3.1.5';
 import { PaymentCheckoutModal } from './paymentModal.js?v=3.1.5';
+import { Gigo } from './gigo.js?v=3.1.5';
+import { Chat } from './chat.js?v=3.1.5';
 
 
 // Initialize application
@@ -47,7 +49,8 @@ async function initApp() {
     await Auth.checkExpiry();
 
     // Initialize Chat System
-    if (window.Chat) window.Chat.init();
+    if (Chat) Chat.init();
+    if (Gigo) Gigo.init();
 
     // Check if user is logged in
     if (userSession && userSession.token && !Auth.isLoggedIn()) {
@@ -236,6 +239,7 @@ function initializeRouter() {
         '/login': () => renderPage(Pages.login()),
         '/register': () => renderPage(Pages.register()),
         '/forgot-password': () => renderPage(Pages.forgotPassword()),
+        '/chat': () => renderPage(Pages.chat()),
         '/gift-cards': () => renderPage(Pages.giftcards.dashboard()),
         '/gift-cards/buy': () => renderPage(Pages.giftcards.purchase()),
         '/gift-card/:code': (params) => renderPage(Pages.giftcards.details(params.code)),

@@ -13,6 +13,38 @@ import { Auth } from './auth.js?v=3.1.5';
 
 export const Pages = {
     // ==================== SHARED PAGES ====================
+    chat() {
+        return `
+            <div class="h-[calc(100vh-80px)] flex bg-slate-50 overflow-hidden">
+                <!-- Sidebar -->
+                <div class="w-full md:w-80 border-r border-slate-200 bg-white flex flex-col">
+                    <div class="p-6 border-b border-slate-100 flex items-center justify-between">
+                        <h2 class="text-xl font-bold text-slate-800">Support Center</h2>
+                        <button onclick="Chat.fetchConversations()" class="p-2 hover:bg-slate-100 rounded-full transition-colors">
+                            <i data-lucide="rotate-cw" class="w-5 h-5 text-slate-500"></i>
+                        </button>
+                    </div>
+                    <div id="chat-sidebar-list" class="flex-1 overflow-y-auto">
+                        <div class="p-8 text-center">
+                            <div class="animate-spin rounded-full h-8 w-8 border-4 border-blue-600 border-t-transparent mx-auto mb-4"></div>
+                            <p class="text-sm text-slate-400">Loading conversations...</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Main Chat Area -->
+                <div id="chat-messages-container" class="hidden md:flex flex-1 flex-col bg-slate-50 relative">
+                    <div class="flex-1 flex flex-col items-center justify-center text-center p-12">
+                        <div class="w-24 h-24 bg-blue-100 rounded-full flex items-center justify-center mb-6">
+                            <i data-lucide="message-square" class="w-12 h-12 text-blue-600"></i>
+                        </div>
+                        <h3 class="text-2xl font-bold text-slate-800 mb-2">Welcome to Support</h3>
+                        <p class="text-slate-500 max-w-sm">Select a conversation from the list to start chatting with our team. We're here to help!</p>
+                    </div>
+                </div>
+            </div>
+        `;
+    },
 
     paymentVerify(params) {
         // Parse possible Paystack root URL query parameters

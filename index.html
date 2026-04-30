@@ -54,7 +54,7 @@
       <div class="max-w-7xl mx-auto px-4 h-20 flex items-center justify-between gap-4">
         <!-- Brand & Hamburger -->
         <div class="flex items-center gap-3">
-          <button onclick="Components.toggleMobileMenu()" class="lg:hidden p-2 hover:bg-slate-100 rounded-xl transition-all">
+          <button id="mobile-menu-toggle" onclick="Components.toggleMobileMenu()" class="lg:hidden p-2 hover:bg-slate-100 rounded-xl transition-all">
             <i data-lucide="menu" class="w-6 h-6 text-slate-700"></i>
           </button>
           <div class="flex items-center gap-2 cursor-pointer group" onclick="window.location.hash = '/'">
@@ -86,7 +86,7 @@
           </div>
 
           <!-- Cart Icon -->
-          <a href="/chat" id="header-chat-icon" class="relative p-2 hover:bg-slate-100 rounded-full transition-colors hidden">
+          <a href="#/chat" id="header-chat-icon" class="relative p-2 hover:bg-slate-100 rounded-full transition-colors hidden">
             <i data-lucide="message-square" class="w-6 h-6 text-slate-700"></i>
             <span class="chat-badge absolute top-1 right-1 bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full hidden"></span>
           </a>
