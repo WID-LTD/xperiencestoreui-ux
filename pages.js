@@ -3121,10 +3121,13 @@ export const Pages = {
                     <div class="glass-card p-8 rounded-2xl mb-8">
                         <h2 class="text-2xl font-bold mb-4">Our Mission</h2>
                         <p class="text-slate-600 leading-relaxed mb-6">
-                            Xperiencestore is revolutionizing e-commerce by creating the world's first truly unified multi-tier commerce platform. We connect consumers, businesses, dropshippers, warehouses, and in one seamless ecosystem.
+                            Xperiencestore is a revolutionizing e-commerce ecosystem by creating the world's first truly unified multi-tier commerce platform. We connect consumers, businesses, dropshippers, suppliers on one seamless ecosystem.
                         </p>
                         <p class="text-slate-600 leading-relaxed">
-                            Our mission is to democratize global trade, making it accessible and efficient for everyone from individual shoppers to large enterprises.
+                            Our mission is to democratize global trade, while maintaining advanced shopping experience making it accessible and efficient for everyone from individual shoppers to large enterprises.
+                        </p>
+                        <p class="text-slate-600 leading-relaxed">
+                        
                         </p>
                     </div>
 

@@ -1179,9 +1179,41 @@ window.submitCampaign = async (form) => {
     const success = await State.createCampaign(data);
     if (success) {
         form.closest('#campaign-modal').remove();
+        Router.refresh();
     } else {
         btn.disabled = false;
         btn.textContent = 'Create Banner';
+    }
+};
+
+window.pauseCoupon = async (id) => {
+    try {
+        const res = await fetch(`${window.API_BASE}/api/admin/coupons/${id}/toggle`, {
+            method: 'PATCH',
+            headers: { 'Authorization': `Bearer ${Auth.getToken()}` }
+        });
+        if (res.ok) {
+            Components.showNotification('Coupon status updated', 'success');
+            Router.refresh();
+        }
+    } catch (error) {
+        console.error('Pause Coupon Error:', error);
+    }
+};
+
+window.deleteCoupon = async (id) => {
+    if (!confirm('Are you sure you want to delete this coupon?')) return;
+    try {
+        const res = await fetch(`${window.API_BASE}/api/admin/coupons/${id}`, {
+            method: 'DELETE',
+            headers: { 'Authorization': `Bearer ${Auth.getToken()}` }
+        });
+        if (res.ok) {
+            Components.showNotification('Coupon deleted', 'success');
+            Router.refresh();
+        }
+    } catch (error) {
+        console.error('Delete Coupon Error:', error);
     }
 };
 
@@ -1462,6 +1494,17 @@ window.createCoupon = () => {
                     </div>
                 </div>
 
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="space-y-2">
+                        <label class="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Usage Limit</label>
+                        <input type="number" name="usage_limit" class="w-full px-4 py-4 rounded-2xl border-2 border-slate-100 bg-slate-50 focus:border-blue-500 focus:bg-white outline-none transition-all font-bold" placeholder="∞">
+                    </div>
+                    <div class="space-y-2">
+                        <label class="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Min Purchase</label>
+                        <input type="number" name="min_purchase" class="w-full px-4 py-4 rounded-2xl border-2 border-slate-100 bg-slate-50 focus:border-blue-500 focus:bg-white outline-none transition-all font-bold" placeholder="0">
+                    </div>
+                </div>
+
                 <div class="space-y-2">
                     <label class="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Expiry Date</label>
                     <input type="date" name="expires_at" class="w-full px-6 py-4 rounded-2xl border-2 border-slate-100 bg-slate-50 focus:border-blue-500 focus:bg-white outline-none transition-all font-bold">
@@ -1485,17 +1528,26 @@ window.createCoupon = () => {
         submitBtn.innerHTML = '<span class="animate-pulse">Creating...</span>';
 
         const formData = {
-            code: form.code.value.toUpperCase(),
+            code: form.code.value.trim().toUpperCase(),
             discount_type: form.discount_type.value,
-            discount_value: parseFloat(form.discount_value.value),
+            discount_value: parseFloat(form.discount_value.value) || 0,
+            usage_limit: parseInt(form.usage_limit.value) || null,
+            min_purchase: parseFloat(form.min_purchase.value) || 0,
             expires_at: form.expires_at.value || null,
             is_active: true
         };
 
+        if (!formData.code || formData.discount_value <= 0) {
+            State.notify('Please provide a valid code and value', 'error');
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Create Coupon';
+            return;
+        }
+
         const success = await State.createCoupon(formData);
         if (success) {
             modal.remove();
-            Router.refresh(true);
+            Router.refresh();
         } else {
             submitBtn.disabled = false;
             submitBtn.textContent = 'Create Coupon';

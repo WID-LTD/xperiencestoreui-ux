@@ -87,7 +87,10 @@ export const State = {
         fetchingCart: false,
         fetchingWishlist: false,
         fetchingOrders: false,
-        businessStats: null
+        businessStats: null,
+        coupons: [],
+        campaigns: [],
+        marketingStats: null
     },
 
     // Currency Format Helper
@@ -112,6 +115,9 @@ export const State = {
             if (role === 'admin') {
                 dataFetches.push(this.fetchAdminStats());
                 dataFetches.push(this.fetchAdminLogs());
+                dataFetches.push(this.fetchCoupons());
+                dataFetches.push(this.fetchCampaigns());
+                dataFetches.push(this.fetchMarketingStats());
             } else if (role === 'supplier') {
                 dataFetches.push(this.fetchSupplierStats());
                 dataFetches.push(this.fetchSupplierOrders());
@@ -157,6 +163,14 @@ export const State = {
         if (window.updateMobileUI) window.updateMobileUI();
         if (window.updateNotificationsUI) window.updateNotificationsUI();
         if (window.updateUserUI) window.updateUserUI();
+    },
+
+    notify(message, type = 'info') {
+        if (window.Components && window.Components.showNotification) {
+            window.Components.showNotification(message, type);
+        } else {
+            console.log(`[NOTIFY] ${type.toUpperCase()}: ${message}`);
+        }
     },
 
     setUser(role, user) {
@@ -1632,6 +1646,37 @@ export const State = {
         return null;
     },
 
+    async applyPromo(code) {
+        if (!code) return;
+        
+        try {
+            const total = this.getCartTotal();
+            const response = await fetch(`${window.API_BASE}/api/coupons/validate`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ code, amount: total })
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                this._state.appliedPromo = data;
+                if (window.Components && window.Components.showNotification) {
+                    window.Components.showNotification(`Applied: ${data.code} (${data.discount_value}${data.discount_type === 'percentage' ? '%' : ' off'})`, 'success');
+                }
+                
+                // Refresh checkout UI if on that page
+                if (window.currentRenderFunction) window.currentRenderFunction();
+            } else {
+                throw new Error(data.message || 'Invalid promo code');
+            }
+        } catch (error) {
+            console.error('[STATE] Promo Error:', error);
+            if (window.Components && window.Components.showNotification) {
+                window.Components.showNotification(error.message, 'error');
+            }
+        }
+    },
     async createCampaign(campaignData) {
         try {
             const formData = new FormData();
@@ -1712,6 +1757,34 @@ export const State = {
             console.error('Fetch coupons error:', err);
         }
         return [];
+    },
+
+    async fetchCampaigns() {
+        try {
+            const res = await fetch(`${API}/admin/campaigns`, { headers: authHeaders() });
+            if (res.ok) {
+                const data = await res.json();
+                this._state.campaigns = data;
+                return data;
+            }
+        } catch (err) {
+            console.error('Fetch campaigns error:', err);
+        }
+        return [];
+    },
+
+    async fetchMarketingStats() {
+        try {
+            const res = await fetch(`${API}/admin/marketing/analytics`, { headers: authHeaders() });
+            if (res.ok) {
+                const data = await res.json();
+                this._state.marketingStats = data;
+                return data;
+            }
+        } catch (err) {
+            console.error('Fetch marketing stats error:', err);
+        }
+        return null;
     },
 
     async createCoupon(couponData) {

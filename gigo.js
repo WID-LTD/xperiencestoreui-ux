@@ -3,6 +3,8 @@
  * Lightbox-style agentic AI using Cloudflare Worker AI (Qwen2.5-Coder-7B)
  */
 
+import { Auth } from './auth.js?v=3.1.6';
+
 export const Gigo = {
     isOpen: false,
 
