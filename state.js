@@ -344,6 +344,24 @@ export const State = {
         return [];
     },
 
+    async markAllNotificationsRead() {
+        try {
+            const res = await fetch(`${API}/notifications/read-all`, {
+                method: 'PUT',
+                headers: authHeaders()
+            });
+            if (res.ok) {
+                this._state.notifications = [];
+                this._persistNonSensitive();
+                if (window.updateNotificationsUI) window.updateNotificationsUI();
+                return true;
+            }
+        } catch (err) {
+            console.error('Mark all read error:', err);
+        }
+        return false;
+    },
+
     async markNotificationAsRead(id) {
         // Prevent local toast IDs (timestamps) from hitting the database sequence
         if (typeof id === 'number' && id > 2147483647) {
@@ -1614,6 +1632,73 @@ export const State = {
         return null;
     },
 
+    async createCampaign(campaignData) {
+        try {
+            const formData = new FormData();
+            Object.keys(campaignData).forEach(key => {
+                if (key === 'image' && campaignData.image instanceof File) {
+                    formData.append('image', campaignData.image);
+                } else {
+                    formData.append(key, campaignData[key]);
+                }
+            });
+
+            const res = await fetch(`${API}/admin/campaigns`, {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${Auth.getToken()}` },
+                body: formData
+            });
+
+            if (res.ok) {
+                this.notify('Campaign created successfully', 'success');
+                await this.fetchMarketingData();
+                return true;
+            } else {
+                const err = await res.json();
+                this.notify(err.message || 'Failed to create campaign', 'error');
+            }
+        } catch (err) {
+            console.error('Create campaign error:', err);
+            this.notify('Network error creating campaign', 'error');
+        }
+        return false;
+    },
+
+    async deleteCampaign(id) {
+        if (!confirm('Are you sure you want to delete this campaign?')) return;
+        try {
+            const res = await fetch(`${API}/admin/campaigns/${id}`, {
+                method: 'DELETE',
+                headers: authHeaders()
+            });
+            if (res.ok) {
+                this.notify('Campaign deleted', 'success');
+                await this.fetchMarketingData();
+                return true;
+            }
+        } catch (err) {
+            console.error('Delete campaign error:', err);
+        }
+        return false;
+    },
+
+    async retryBroadcastCampaign(id) {
+        try {
+            const res = await fetch(`${API}/admin/campaigns/${id}/retry`, {
+                method: 'POST',
+                headers: authHeaders()
+            });
+            if (res.ok) {
+                this.notify('Broadcast resent successfully', 'success');
+                await this.fetchMarketingData();
+                return true;
+            }
+        } catch (err) {
+            console.error('Retry broadcast error:', err);
+        }
+        return false;
+    },
+
     async fetchCoupons() {
         try {
             const res = await fetch(`${API}/admin/coupons`, { headers: authHeaders() });
@@ -1627,6 +1712,29 @@ export const State = {
             console.error('Fetch coupons error:', err);
         }
         return [];
+    },
+
+    async createCoupon(couponData) {
+        try {
+            const res = await fetch(`${API}/admin/coupons`, {
+                method: 'POST',
+                headers: authHeaders(),
+                body: JSON.stringify(couponData)
+            });
+
+            if (res.ok) {
+                this.notify('Coupon created successfully', 'success');
+                await this.fetchCoupons();
+                return true;
+            } else {
+                const err = await res.json();
+                this.notify(err.message || 'Failed to create coupon', 'error');
+            }
+        } catch (err) {
+            console.error('Create coupon error:', err);
+            this.notify('Network error creating coupon', 'error');
+        }
+        return false;
     },
 
     async toggleCouponStatus(id) {

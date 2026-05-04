@@ -55,7 +55,7 @@
         <!-- Brand & Hamburger -->
         <div class="flex items-center gap-3">
           <button id="mobile-menu-toggle" onclick="Components.toggleMobileMenu()" class="lg:hidden p-2 hover:bg-slate-100 rounded-xl transition-all">
-            <i data-lucide="menu" class="w-6 h-6 text-slate-700"></i>
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" data-lucide="menu" aria-hidden="true" class="lucide lucide-menu w-6 h-6 text-slate-700"><path d="M4 5h16"></path><path d="M4 12h16"></path><path d="M4 19h16"></path></svg>
           </button>
           <div class="flex items-center gap-2 cursor-pointer group" onclick="window.location.hash = '/'">
             <img src="assets/logo.png" alt="Xperincestore Logo" class="h-10 w-10 sm:h-12 sm:w-12 object-contain transition-transform group-hover:scale-105" />
@@ -91,14 +91,14 @@
             <span class="chat-badge absolute top-1 right-1 bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full hidden"></span>
           </a>
 
-          <a href="/cart" class="relative p-2 hover:bg-slate-100 rounded-full transition-colors">
+          <a href="#/cart" class="relative p-2 hover:bg-slate-100 rounded-full transition-colors">
             <i data-lucide="shopping-cart" class="w-6 h-6 text-slate-700"></i>
             <span class="shopping-cart-badge absolute top-1 right-1 bg-blue-600 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">0</span>
           </a>
 
           <!-- Notifications -->
           <div class="relative" id="notifications-wrapper">
-            <div class="cursor-pointer p-2 hover:bg-slate-100 rounded-xl transition-all relative" onclick="document.getElementById('notifications-dropdown').classList.toggle('hidden')">
+            <div class="cursor-pointer p-2 hover:bg-slate-100 rounded-xl transition-all relative">
               <i data-lucide="bell" class="w-6 h-6 text-slate-700"></i>
               <span id="unread-notifications-count" class="hidden absolute top-1 right-1 bg-red-600 text-white text-[9px] font-bold px-1 rounded-full border-2 border-white">0</span>
             </div>
@@ -171,7 +171,7 @@
     </div>
 
     <!-- Mobile Slide-out Menu -->
-    <div id="mobile-side-menu" class="fixed inset-0 z-[2500] pointer-events-none">
+    <div id="mobile-side-menu" class="fixed inset-0 z-[2500] pointer-events-none transition-all duration-300">
         <div id="mobile-menu-overlay" class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm opacity-0 transition-opacity duration-300"></div>
         <div id="mobile-menu-content" class="absolute top-0 right-0 bottom-0 w-80 bg-white shadow-2xl translate-x-full transition-transform duration-300 p-6">
             <!-- Injected via Components.MobileMenu -->
@@ -359,6 +359,6 @@
       class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[2000] flex items-center justify-center p-4"
     ></div>
 
-    <script src="script.js?v=3.1.5" type="module"></script>
+    <script src="script.js?v=3.1.6" type="module"></script>
 </body>
 </html>

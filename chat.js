@@ -3,8 +3,8 @@
  * Handles direct messaging with Admin/Support
  */
 
-import { Auth } from './auth.js?v=3.1.5';
-import { Components } from './components.js?v=3.1.5';
+import { Auth } from './auth.js?v=3.1.6';
+import { Components } from './components.js?v=3.1.6';
 
 export const Chat = {
     socket: null,

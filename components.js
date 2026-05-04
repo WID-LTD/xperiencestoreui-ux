@@ -3,8 +3,8 @@
  * Library of reusable components for consistent UI
  */
 
-import { State } from './state.js?v=3.1.5';
-import { Router } from './router.js?v=3.1.5';
+import { State } from './state.js?v=3.1.6';
+import { Router } from './router.js?v=3.1.6';
 
 export const Components = {
     // Search Suggestions Component (Glassmorphism)
@@ -718,81 +718,140 @@ export const Components = {
     MobileMenu() {
         const role = State.get().userRole;
         const user = State.get().user || { name: 'Welcome', email: 'v1.0.0-beta' };
+        const isLoggedIn = !!State.get().currentUser;
         
         return `
-            <div class="flex flex-col h-full">
-                <div class="flex items-center justify-between mb-8">
-                    <div class="flex items-center gap-3">
-                        <div class="w-12 h-12 rounded-full bg-blue-600 flex items-center justify-center text-white font-bold">
-                            ${user.name.charAt(0)}
+            <div class="flex flex-col h-full bg-white/90 backdrop-blur-2xl">
+                <!-- User Profile Header -->
+                <div class="p-8 pb-6">
+                    <div class="flex items-center justify-between mb-8">
+                        <div class="flex items-center gap-2 group cursor-pointer" onclick="window.location.hash = '/'; Components.toggleMobileMenu();">
+                            <div class="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center text-white shadow-lg shadow-blue-200">
+                                <i data-lucide="zap" class="w-6 h-6 fill-current"></i>
+                            </div>
+                            <span class="text-xl font-black tracking-tighter text-slate-800">XPERIENCE</span>
                         </div>
-                        <div>
-                            <p class="font-bold text-slate-800">${user.name}</p>
-                            <p class="text-xs text-slate-500">${role.toUpperCase()}</p>
-                        </div>
-                    </div>
-                    <button onclick="Components.toggleMobileMenu()" class="p-2 hover:bg-slate-100 rounded-lg">
-                        <i data-lucide="x" class="w-6 h-6"></i>
-                    </button>
-                </div>
-
-                <div class="flex-1 space-y-2 overflow-y-auto">
-                    ${this.getMobileLinks(role).map(link => `
-                        <a href="#${link.path}" class="flex items-center gap-4 p-4 rounded-xl border border-transparent hover:bg-blue-50 hover:border-blue-100 transition-all group" onclick="Components.toggleMobileMenu()">
-                            <i data-lucide="${link.icon}" class="w-5 h-5 text-slate-400 group-hover:text-blue-600"></i>
-                            <span class="font-bold text-slate-700">${link.label}</span>
-                        </a>
-                    `).join('')}
-                </div>
-
-                ${State.get().currentUser ? `
-                    <div class="mt-auto pt-6 border-t border-slate-100">
-                        <button onclick="Auth.logout(); setTimeout(() => { window.location.hash = '#/'; window.location.reload(); }, 500);" class="w-full flex items-center gap-4 p-4 rounded-xl text-red-600 font-bold hover:bg-red-50 transition-all">
-                            <i data-lucide="log-out" class="w-5 h-5"></i>
-                            <span>Logout</span>
+                        <button onclick="Components.toggleMobileMenu()" class="p-2 hover:bg-slate-100 rounded-xl transition-all">
+                            <i data-lucide="x" class="w-6 h-6 text-slate-400"></i>
                         </button>
                     </div>
-                ` : `
-                    <div class="mt-auto pt-6 border-t border-slate-100 grid grid-cols-2 gap-3">
-                        <a href="#/login" onclick="Components.toggleMobileMenu()" class="flex items-center justify-center p-4 rounded-xl bg-blue-600 text-white font-bold text-sm">Login</a>
-                        <a href="#/register" onclick="Components.toggleMobileMenu()" class="flex items-center justify-center p-4 rounded-xl bg-slate-100 text-slate-800 font-bold text-sm">Join</a>
+
+                    <div class="flex items-center gap-4 p-4 rounded-3xl bg-slate-50/50 border border-slate-100 shadow-sm">
+                        <div class="w-14 h-14 rounded-full bg-gradient-to-br from-blue-500 to-blue-700 p-0.5 shadow-md">
+                            <div class="w-full h-full rounded-full border-2 border-white flex items-center justify-center text-white font-black text-xl">
+                                ${user.name.charAt(0).toUpperCase()}
+                            </div>
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <p class="font-black text-slate-800 truncate text-lg leading-tight">${user.name}</p>
+                            <div class="flex items-center gap-1.5 mt-0.5">
+                                <span class="w-2 h-2 rounded-full ${isLoggedIn ? 'bg-green-500' : 'bg-slate-300'} shadow-[0_0_8px_rgba(34,197,94,0.5)]"></span>
+                                <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">${role}</p>
+                            </div>
+                        </div>
                     </div>
-                `}
+                </div>
+
+                <!-- Navigation Links -->
+                <div class="flex-1 px-6 py-2 overflow-y-auto custom-scrollbar">
+                    <p class="px-4 text-[10px] font-black text-slate-400 uppercase tracking-[0.25em] mb-4 mt-4 opacity-60">Navigation</p>
+                    <div class="space-y-1">
+                        ${this.getMobileLinks(role).map(link => `
+                            <a href="#${link.path}" class="flex items-center gap-4 p-4 rounded-2xl border border-transparent hover:bg-white hover:border-slate-100 hover:shadow-md transition-all duration-300 group" onclick="Components.toggleMobileMenu()">
+                                <div class="w-11 h-11 rounded-xl bg-slate-50 group-hover:bg-blue-50 flex items-center justify-center transition-colors">
+                                    <i data-lucide="${link.icon}" class="w-5 h-5 text-slate-400 group-hover:text-blue-600 transition-transform group-hover:scale-110"></i>
+                                </div>
+                                <span class="font-bold text-slate-600 group-hover:text-slate-900">${link.label}</span>
+                                <i data-lucide="chevron-right" class="w-4 h-4 ml-auto text-slate-300 opacity-0 group-hover:opacity-100 transition-all -translate-x-2 group-hover:translate-x-0"></i>
+                            </a>
+                        `).join('')}
+                    </div>
+                </div>
+
+                <!-- Footer Actions -->
+                <div class="p-8 mt-auto bg-slate-50/50 border-t border-slate-100 rounded-t-[32px]">
+                    ${isLoggedIn ? `
+                        <button onclick="Auth.logout(); Components.toggleMobileMenu();" class="w-full flex items-center gap-4 p-4 rounded-2xl text-red-600 font-bold hover:bg-white hover:shadow-md transition-all duration-300">
+                            <div class="w-11 h-11 rounded-xl bg-red-50 flex items-center justify-center">
+                                <i data-lucide="log-out" class="w-5 h-5"></i>
+                            </div>
+                            <span>Logout Account</span>
+                        </button>
+                    ` : `
+                        <div class="grid grid-cols-2 gap-4">
+                            <a href="#/login" onclick="Components.toggleMobileMenu()" class="flex items-center justify-center p-4 py-5 rounded-2xl bg-blue-600 text-white font-black text-sm shadow-xl shadow-blue-200 active:scale-95 transition-all">LOGIN</a>
+                            <a href="#/register" onclick="Components.toggleMobileMenu()" class="flex items-center justify-center p-4 py-5 rounded-2xl bg-white border border-slate-200 text-slate-800 font-black text-sm shadow-sm active:scale-95 transition-all">JOIN</a>
+                        </div>
+                    `}
+                </div>
             </div>
         `;
     },
 
     getMobileLinks(role) {
-        const generalLinks = [
-            { label: 'Home', path: '/', icon: 'home' },
-            { label: 'All Categories', path: '/categories', icon: 'grid' },
-            { label: 'About Us', path: '/about', icon: 'info' },
-            { label: 'Contact Us', path: '/contact', icon: 'mail' },
-            { label: 'FAQ', path: '/faq', icon: 'help-circle' },
-            { label: 'Privacy Policy', path: '/privacy', icon: 'shield' },
-            { label: 'Terms of Service', path: '/terms', icon: 'file-text' }
-        ];
-
-        const roleSpecificLinks = {
-            dropshipper: [
-                { label: 'Profit Calculator', path: '/dropshipper/profit-calculator', icon: 'calculator' },
-                { label: 'API Management', path: '/dropshipper/api-management', icon: 'code' }
+        const links = {
+            consumer: [
+                { label: 'Home', path: '/', icon: 'home' },
+                { label: 'Products', path: '/products', icon: 'package' },
+                { label: 'About', path: '/about', icon: 'info' },
+                { label: 'Contact', path: '/contact', icon: 'mail' }
             ],
             business: [
-                { label: 'Bulk Inquiry', path: '/business/rfq/new', icon: 'plus-circle' }
+                { label: 'Home', path: '/', icon: 'home' },
+                { label: 'Suppliers', path: '/business/suppliers', icon: 'users' },
+                { label: 'RFQ', path: '/business/rfq', icon: 'file-text' },
+                { label: 'Products', path: '/products', icon: 'package' }
+            ],
+            dropshipper: [
+                { label: 'Home', path: '/', icon: 'home' },
+                { label: 'My Store', path: '/dropshipper/storefront', icon: 'store' },
+                { label: 'Products', path: '/products', icon: 'package' },
+                { label: 'Analytics', path: '/dropshipper/analytics', icon: 'bar-chart' }
+            ],
+            warehouse: [
+                { label: 'Home', path: '/', icon: 'home' },
+                { label: 'Receiving', path: '/warehouse/receiving', icon: 'arrow-down-left' },
+                { label: 'Inventory', path: '/warehouse/inventory', icon: 'layers' },
+                { label: 'Fulfillment', path: '/warehouse/fulfillment', icon: 'truck' }
+            ],
+            supplier: [
+                { label: 'Home', path: '/', icon: 'home' },
+                { label: 'Products', path: '/supplier/products', icon: 'package' },
+                { label: 'Orders', path: '/supplier/orders', icon: 'shopping-bag' },
+                { label: 'Finance', path: '/supplier/finance', icon: 'dollar-sign' }
             ],
             admin: [
-                { label: 'System Logs', path: '/admin/logs', icon: 'terminal' },
-                { label: 'Developer Console', path: '/admin/dev-console', icon: 'cpu' }
+                { label: 'Dashboard', path: '/', icon: 'layout' },
+                { label: 'Orders', path: '/admin/orders', icon: 'shopping-cart' },
+                { label: 'Products', path: '/admin/products', icon: 'box' },
+                { label: 'Users', path: '/admin/users', icon: 'users' },
+                { label: 'Marketing', path: '/admin/marketing', icon: 'megaphone' },
+                { label: 'Reports', path: '/admin/reports', icon: 'file-text' },
+                { label: 'Settings', path: '/admin/settings', icon: 'settings' }
             ]
         };
 
-        return [...generalLinks, ...(roleSpecificLinks[role] || [])];
+        const roleLinks = links[role] || links.consumer;
+        
+        // Add some utility links at the bottom for everyone
+        const utilityLinks = [
+            { label: 'Categories', path: '/categories', icon: 'grid' },
+            { label: 'Track Order', path: '/track-order', icon: 'map-pin' }
+        ];
+
+        return [...roleLinks, ...utilityLinks];
     },
 
     toggleMobileMenu() {
         const menu = document.getElementById('mobile-side-menu');
-        menu.classList.toggle('active');
+        if (!menu) return;
+        
+        const isActive = menu.classList.toggle('active');
+        
+        // Force re-render of content when opening to ensure fresh data/role state
+        if (isActive && window.updateMobileUI) {
+            window.updateMobileUI();
+        }
     },
 
     // "More to Love" Section (Horizontal Scroll)
@@ -819,6 +878,69 @@ export const Components = {
                     <div class="absolute inset-y-0 left-0 w-12 bg-gradient-to-r from-slate-50 to-transparent pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity"></div>
                     <div class="absolute inset-y-0 right-0 w-12 bg-gradient-to-l from-slate-50 to-transparent pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity"></div>
                 </div>
+            </div>
+        `;
+    },
+
+    // Marketing Campaign Slider for Homepage
+    CampaignSlider(campaigns = []) {
+        if (!campaigns || campaigns.length === 0) {
+            // Fallback to random product scroll if no campaigns
+            const products = State.get().products || [];
+            return this.RandomProductScroll(products);
+        }
+        
+        return `
+            <div class="relative w-full overflow-hidden rounded-[2.5rem] h-[300px] md:h-[400px] group shadow-2xl bg-slate-900">
+                <div id="campaign-slider-track" class="flex h-full transition-transform duration-700 ease-out">
+                    ${campaigns.map(c => `
+                        <div class="min-w-full h-full relative cursor-pointer" onclick="Router.navigate('${c.redirect_url}')">
+                            <img src="${c.image_url}" class="w-full h-full object-cover opacity-80" onerror="this.src='/assets/placeholder.png'">
+                            <div class="absolute inset-0 bg-gradient-to-t from-slate-900 via-transparent to-transparent"></div>
+                            <div class="absolute bottom-10 left-10 text-white max-w-lg">
+                                <h2 class="text-3xl md:text-5xl font-black mb-2 drop-shadow-lg">${c.title}</h2>
+                                <p class="text-lg opacity-90 drop-shadow-md">Exclusive Deal • Limited Time Only</p>
+                                <button class="mt-6 bg-white text-blue-600 px-8 py-3 rounded-2xl font-black uppercase tracking-widest hover:scale-105 transition-all shadow-xl">Shop Now</button>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+                
+                <!-- Navigation Dots -->
+                <div class="absolute bottom-6 right-10 flex gap-2">
+                    ${campaigns.map((_, i) => `
+                        <button onclick="window.moveSlider(${i})" class="w-3 h-3 rounded-full bg-white/20 hover:bg-white/50 transition-all campaign-dot" data-index="${i}"></button>
+                    `).join('')}
+                </div>
+
+                <!-- Auto-scroll Script Injection -->
+                <script>
+                    (function() {
+                        let currentIndex = 0;
+                        const count = ${campaigns.length};
+                        const track = document.getElementById('campaign-slider-track');
+                        const dots = document.querySelectorAll('.campaign-dot');
+
+                        window.moveSlider = (index) => {
+                            currentIndex = index;
+                            track.style.transform = \`translateX(-\${currentIndex * 100}%)\`;
+                            dots.forEach((d, i) => {
+                                d.classList.toggle('bg-white', i === currentIndex);
+                                d.classList.toggle('w-8', i === currentIndex);
+                                d.classList.toggle('bg-white/20', i !== currentIndex);
+                            });
+                        };
+
+                        // Initial state
+                        if (dots.length > 0) moveSlider(0);
+
+                        // Auto scroll
+                        const interval = setInterval(() => {
+                            if (!document.getElementById('campaign-slider-track')) return clearInterval(interval);
+                            moveSlider((currentIndex + 1) % count);
+                        }, 5000);
+                    })();
+                </script>
             </div>
         `;
     },

@@ -20,6 +20,11 @@ export const Auth = {
         }
     },
 
+    getAuthHeaders: () => {
+        const token = Auth.getToken();
+        return token ? { 'Authorization': `Bearer ${token}` } : {};
+    },
+
     // Login function
     login: async (email, password) => {
         try {

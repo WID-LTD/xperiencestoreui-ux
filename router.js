@@ -47,7 +47,23 @@ export const Router = {
             route.handler(allParams);
         } else {
             console.warn('No route found for:', path);
-            this.navigate('/404');
+            if (path !== '/404') {
+                this.navigate('/404');
+            } else {
+                // Last resort: back to home if even 404 is missing
+                const contentArea = document.getElementById('app-viewport') || document.body;
+                if (contentArea) {
+                    contentArea.innerHTML = `
+                        <div class="flex flex-col items-center justify-center min-h-[60vh] p-8 text-center">
+                            <h1 class="text-6xl font-black text-slate-200 mb-4">404</h1>
+                            <p class="text-xl font-bold text-slate-800 mb-8">Page Not Found</p>
+                            <button onclick="window.location.hash = '/'" class="px-8 py-3 bg-blue-600 text-white rounded-2xl font-bold shadow-lg hover:bg-blue-700 transition-all">
+                                Return Home
+                            </button>
+                        </div>
+                    `;
+                }
+            }
         }
 
         // Scroll to top only if not silent

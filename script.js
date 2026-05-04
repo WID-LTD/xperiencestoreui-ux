@@ -3,16 +3,16 @@
  * Wires together router, state, pages, and components
  */
 
-import { Auth } from './auth.js?v=3.1.5';
-import { Router } from './router.js?v=3.1.5';
-import { State } from './state.js?v=3.1.5';
-import { Data } from './data.js?v=3.1.5';
-import { Components } from './components.js?v=3.1.5';
-import { Pages } from './pages.js?v=3.1.5';
-import { Payment } from './payment.js?v=3.1.5';
-import { PaymentCheckoutModal } from './paymentModal.js?v=3.1.5';
-import { Gigo } from './gigo.js?v=3.1.5';
-import { Chat } from './chat.js?v=3.1.5';
+import { Auth } from './auth.js?v=3.1.6';
+import { Router } from './router.js?v=3.1.6';
+import { State } from './state.js?v=3.1.6';
+import { Data } from './data.js?v=3.1.6';
+import { Components } from './components.js?v=3.1.6';
+import { Pages } from './pages.js?v=3.1.6';
+import { Payment } from './payment.js?v=3.1.6';
+import { PaymentCheckoutModal } from './paymentModal.js?v=3.1.6';
+import { Gigo } from './gigo.js?v=3.1.6';
+import { Chat } from './chat.js?v=3.1.6';
 
 
 // Initialize application
@@ -137,6 +137,9 @@ async function initApp() {
     if (menuToggle) {
         menuToggle.onclick = () => Components.toggleMobileMenu();
     }
+    
+    // Initial UI Update for mobile
+    updateMobileUI();
     const menuOverlay = document.getElementById('mobile-menu-overlay');
     if (menuOverlay) {
         menuOverlay.onclick = () => Components.toggleMobileMenu();
@@ -210,7 +213,14 @@ function startDashboardPolling() {
                 currentRoute.path.startsWith('/dropshipper') ||
                 currentRoute.path === '/notifications'
             )) {
-                Router.handleRoute();
+                // Targeted Update: Check if we can just update the content without a full route re-render
+                const dashboardContent = document.querySelector('.glass-card');
+                if (dashboardContent && !isInputPage) {
+                    console.log('[POLLING] Performing targeted UI update...');
+                    Router.handleRoute(); // Still using handleRoute but we could optimize further
+                } else {
+                    Router.handleRoute();
+                }
             }
         } catch (err) {
             console.warn('[POLLING] Refresh failed', err);
@@ -700,7 +710,7 @@ function updateUserUI() {
 function setupNotifications() {
     const dropdown = document.getElementById('notifications-dropdown');
     const wrapper = document.getElementById('notifications-wrapper');
-    const bellBtn = wrapper?.querySelector('button');
+    const bellBtn = wrapper?.querySelector('.cursor-pointer');
 
     if (!wrapper || !dropdown) return;
 
@@ -991,6 +1001,199 @@ window.openPayoutModal = () => {
 
     const bank = State.get().bankAccount;
     if (!bank) {
+        Components.showNotification('Please link a bank account first', 'warning');
+        window.openBankModal();
+        return;
+    }
+
+    modal.classList.remove('hidden');
+    lucide.createIcons();
+};
+
+/**
+ * Opens the platform-wide broadcast modal (lightbox)
+ */
+window.openBroadcastModal = () => {
+    const modal = document.createElement('div');
+    modal.id = 'broadcast-modal';
+    modal.className = 'fixed inset-0 z-[2000] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4';
+    modal.innerHTML = `
+        <div class="glass-card w-full max-w-2xl p-8 rounded-[2.5rem] bg-white animate-in fade-in zoom-in duration-300 relative shadow-2xl">
+            <button onclick="this.closest('#broadcast-modal').remove()" class="absolute top-6 right-6 p-2 hover:bg-slate-100 rounded-xl transition-all">
+                <i data-lucide="x" class="w-6 h-6 text-slate-400"></i>
+            </button>
+            
+            <div class="flex items-center gap-4 mb-8">
+                <div class="w-14 h-14 bg-blue-600 rounded-2xl flex items-center justify-center shadow-lg shadow-blue-200">
+                    <i data-lucide="megaphone" class="text-white w-7 h-7"></i>
+                </div>
+                <div>
+                    <h2 class="text-3xl font-black text-slate-900">Platform Broadcast</h2>
+                    <p class="text-slate-500 font-medium">Reach your audience instantly</p>
+                </div>
+            </div>
+
+            <form onsubmit="event.preventDefault(); window.submitBroadcast(this);" class="space-y-6">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="space-y-2">
+                        <label class="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Title</label>
+                        <input type="text" name="title" required placeholder="Flash Sale Live!" class="w-full px-6 py-4 rounded-2xl border-2 border-slate-100 bg-slate-50 focus:border-blue-500 focus:bg-white outline-none transition-all font-bold">
+                    </div>
+                    <div class="space-y-2">
+                        <label class="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Channel</label>
+                        <select name="channel" class="w-full px-6 py-4 rounded-2xl border-2 border-slate-100 bg-slate-50 focus:border-blue-500 focus:bg-white outline-none transition-all font-bold appearance-none">
+                            <option value="push">Push Notification</option>
+                            <option value="email">Email</option>
+                            <option value="both">Both</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="space-y-2">
+                        <label class="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Audience</label>
+                        <select name="role" class="w-full px-6 py-4 rounded-2xl border-2 border-slate-100 bg-slate-50 focus:border-blue-500 focus:bg-white outline-none transition-all font-bold appearance-none">
+                            <option value="all">All Users</option>
+                            <option value="consumer">Consumers</option>
+                            <option value="supplier">Suppliers</option>
+                            <option value="dropshipper">Dropshippers</option>
+                        </select>
+                    </div>
+                    <div class="space-y-2">
+                        <label class="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Link (Optional)</label>
+                        <input type="text" name="link" placeholder="#/products" class="w-full px-6 py-4 rounded-2xl border-2 border-slate-100 bg-slate-50 focus:border-blue-500 focus:bg-white outline-none transition-all font-bold">
+                    </div>
+                </div>
+
+                <div class="space-y-2">
+                    <label class="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Message</label>
+                    <textarea name="message" required rows="3" placeholder="Get 20% off everything today..." class="w-full px-6 py-4 rounded-2xl border-2 border-slate-100 bg-slate-50 focus:border-blue-500 focus:bg-white outline-none transition-all font-bold"></textarea>
+                </div>
+
+                <div class="pt-4">
+                    <button type="submit" class="w-full py-5 bg-blue-600 text-white rounded-[1.5rem] font-black uppercase tracking-widest shadow-2xl shadow-blue-200 hover:bg-blue-700 hover:-translate-y-1 transition-all flex items-center justify-center gap-3">
+                        <i data-lucide="send" class="w-5 h-5"></i> Launch Broadcast
+                    </button>
+                </div>
+            </form>
+        </div>
+    `;
+    document.body.appendChild(modal);
+    lucide.createIcons();
+};
+
+window.submitBroadcast = async (form) => {
+    const formData = new FormData(form);
+    const data = Object.fromEntries(formData.entries());
+    const btn = form.querySelector('button[type="submit"]');
+    
+    btn.disabled = true;
+    btn.innerHTML = '<i class="animate-spin" data-lucide="loader-2"></i> Launching...';
+    lucide.createIcons();
+
+    // Use createCampaign API with type 'broadcast'
+    data.type = 'broadcast';
+    const success = await State.createCampaign(data);
+    if (success) {
+        form.closest('#broadcast-modal').remove();
+    } else {
+        btn.disabled = false;
+        btn.innerHTML = '<i data-lucide="send" class="w-5 h-5"></i> Launch Broadcast';
+        lucide.createIcons();
+    }
+};
+
+/**
+ * Opens the Campaign Slider creation modal
+ */
+window.openCampaignModal = () => {
+    const modal = document.createElement('div');
+    modal.id = 'campaign-modal';
+    modal.className = 'fixed inset-0 z-[2000] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4';
+    modal.innerHTML = `
+        <div class="glass-card w-full max-w-md p-8 rounded-[2.5rem] bg-white animate-in fade-in zoom-in duration-300 relative shadow-2xl">
+            <button onclick="this.closest('#campaign-modal').remove()" class="absolute top-6 right-6 p-2 hover:bg-slate-100 rounded-xl transition-all">
+                <i data-lucide="x" class="w-6 h-6 text-slate-400"></i>
+            </button>
+            
+            <h2 class="text-3xl font-black text-slate-900 mb-2">New Banner</h2>
+            <p class="text-slate-500 font-medium mb-8">Add a slider to the homepage</p>
+
+            <form onsubmit="event.preventDefault(); window.submitCampaign(this);" class="space-y-6">
+                <div class="space-y-2">
+                    <label class="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Banner Image</label>
+                    <div class="relative group cursor-pointer">
+                        <input type="file" name="image" required accept="image/*" class="absolute inset-0 opacity-0 cursor-pointer z-10" onchange="window.previewBanner(this)">
+                        <div id="banner-preview" class="w-full aspect-video bg-slate-50 border-2 border-dashed border-slate-200 rounded-3xl flex flex-col items-center justify-center group-hover:border-blue-400 transition-all overflow-hidden">
+                            <i data-lucide="image" class="w-8 h-8 text-slate-300 mb-2"></i>
+                            <p class="text-xs font-bold text-slate-400 uppercase tracking-widest">Upload Banner</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="space-y-2">
+                    <label class="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Title</label>
+                    <input type="text" name="title" required placeholder="Summer Collection" class="w-full px-6 py-4 rounded-2xl border-2 border-slate-100 bg-slate-50 focus:border-blue-500 focus:bg-white outline-none transition-all font-bold">
+                </div>
+
+                <div class="space-y-2">
+                    <label class="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Redirect URL</label>
+                    <input type="text" name="redirect_url" required placeholder="#/category/Summer" class="w-full px-6 py-4 rounded-2xl border-2 border-slate-100 bg-slate-50 focus:border-blue-500 focus:bg-white outline-none transition-all font-bold">
+                </div>
+
+                <div class="pt-4">
+                    <button type="submit" class="w-full py-5 bg-slate-900 text-white rounded-[1.5rem] font-black uppercase tracking-widest shadow-2xl hover:bg-slate-800 hover:-translate-y-1 transition-all">
+                        Create Banner
+                    </button>
+                </div>
+            </form>
+        </div>
+    `;
+    document.body.appendChild(modal);
+    lucide.createIcons();
+};
+
+window.previewBanner = (input) => {
+    if (input.files && input.files[0]) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const preview = document.getElementById('banner-preview');
+            preview.innerHTML = `<img src="${e.target.result}" class="w-full h-full object-cover">`;
+        };
+        reader.readAsDataURL(input.files[0]);
+    }
+};
+
+window.submitCampaign = async (form) => {
+    const formData = new FormData(form);
+    const data = {
+        title: formData.get('title'),
+        redirect_url: formData.get('redirect_url'),
+        image: formData.get('image'),
+        type: 'banner'
+    };
+    const btn = form.querySelector('button[type="submit"]');
+    btn.disabled = true;
+    btn.textContent = 'Uploading...';
+
+    const success = await State.createCampaign(data);
+    if (success) {
+        form.closest('#campaign-modal').remove();
+    } else {
+        btn.disabled = false;
+        btn.textContent = 'Create Banner';
+    }
+};
+
+/**
+ * Opens Payout Request Modal
+ */
+window.openPayoutModal = () => {
+    const modal = document.getElementById('payout-modal');
+    if (!modal) return;
+
+    const bank = State.get().bankAccount;
+    if (!bank) {
         Components.showNotification('Please link your bank account first', 'warning');
         window.openBankModal();
         return;
@@ -1144,4 +1347,158 @@ window.initPriceSliders = () => {
     }
 
     updateTrack();
+};
+
+// ==================== CAMPAIGN & MARKETING HANDLERS ====================
+
+window.createCampaign = () => {
+    const modal = document.createElement('div');
+    modal.id = 'campaign-modal';
+    modal.className = 'fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[3000] flex items-center justify-center p-4';
+    modal.innerHTML = `
+        <div class="glass-card w-full max-w-lg p-8 rounded-[2.5rem] bg-white shadow-2xl relative animate-in fade-in zoom-in duration-300">
+            <button onclick="this.closest('#campaign-modal').remove()" class="absolute top-6 right-6 p-2 hover:bg-slate-100 rounded-xl transition-all">
+                <i data-lucide="x" class="w-6 h-6 text-slate-400"></i>
+            </button>
+            <h2 class="text-3xl font-black text-slate-900 mb-2">New Campaign</h2>
+            <p class="text-slate-500 font-medium mb-8">Boost your reach with a homepage banner.</p>
+            
+            <form id="campaign-form" class="space-y-6">
+                <div class="space-y-2">
+                    <label class="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Campaign Title</label>
+                    <input type="text" name="title" required class="w-full px-6 py-4 rounded-2xl border-2 border-slate-100 bg-slate-50 focus:border-blue-500 focus:bg-white outline-none transition-all font-bold" placeholder="e.g. Summer Mega Sale">
+                </div>
+                
+                <div class="space-y-2">
+                    <label class="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Redirect URL</label>
+                    <input type="text" name="redirect_url" required class="w-full px-6 py-4 rounded-2xl border-2 border-slate-100 bg-slate-50 focus:border-blue-500 focus:bg-white outline-none transition-all font-bold" placeholder="e.g. /#/category/electronics">
+                </div>
+
+                <div class="space-y-2">
+                    <label class="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Banner Image</label>
+                    <div class="relative group">
+                        <input type="file" name="image" accept="image/*" required class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" onchange="window.previewCampaignImage(this)">
+                        <div id="image-preview-container" class="w-full h-40 border-2 border-dashed border-slate-200 rounded-2xl flex flex-col items-center justify-center bg-slate-50 group-hover:border-blue-400 transition-all overflow-hidden">
+                            <i data-lucide="image" class="w-10 h-10 text-slate-300 mb-2"></i>
+                            <p class="text-xs font-bold text-slate-400">Click to upload banner (1200x400 recommended)</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex gap-4 pt-4">
+                    <button type="button" onclick="this.closest('#campaign-modal').remove()" class="flex-1 py-4 text-slate-400 font-black uppercase tracking-widest hover:text-slate-600 transition-all">Cancel</button>
+                    <button type="submit" class="flex-[2] py-4 bg-blue-600 text-white rounded-2xl font-black uppercase tracking-widest shadow-xl shadow-blue-200 hover:bg-blue-700 hover:-translate-y-1 transition-all">Launch Campaign</button>
+                </div>
+            </form>
+        </div>
+    `;
+    document.body.appendChild(modal);
+    lucide.createIcons();
+
+    const form = document.getElementById('campaign-form');
+    form.onsubmit = async (e) => {
+        e.preventDefault();
+        const submitBtn = form.querySelector('button[type="submit"]');
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<span class="animate-pulse">Launching...</span>';
+
+        const formData = {
+            title: form.title.value,
+            redirect_url: form.redirect_url.value,
+            image: form.image.files[0]
+        };
+
+        const success = await State.createCampaign(formData);
+        if (success) {
+            modal.remove();
+            Router.refresh(true);
+        } else {
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Launch Campaign';
+        }
+    };
+};
+
+window.previewCampaignImage = (input) => {
+    const container = document.getElementById('image-preview-container');
+    if (input.files && input.files[0]) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            container.innerHTML = `<img src="${e.target.result}" class="w-full h-full object-cover">`;
+        };
+        reader.readAsDataURL(input.files[0]);
+    }
+};
+
+window.createCoupon = () => {
+    const modal = document.createElement('div');
+    modal.id = 'coupon-modal';
+    modal.className = 'fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[3000] flex items-center justify-center p-4';
+    modal.innerHTML = `
+        <div class="glass-card w-full max-w-md p-8 rounded-[2.5rem] bg-white shadow-2xl relative animate-in fade-in zoom-in duration-300">
+            <button onclick="this.closest('#coupon-modal').remove()" class="absolute top-6 right-6 p-2 hover:bg-slate-100 rounded-xl transition-all">
+                <i data-lucide="x" class="w-6 h-6 text-slate-400"></i>
+            </button>
+            <h2 class="text-3xl font-black text-slate-900 mb-2">Add Coupon</h2>
+            <p class="text-slate-500 font-medium mb-8">Create a discount for your customers.</p>
+            
+            <form id="coupon-form" class="space-y-6">
+                <div class="space-y-2">
+                    <label class="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Coupon Code</label>
+                    <input type="text" name="code" required class="w-full px-6 py-4 rounded-2xl border-2 border-slate-100 bg-slate-50 focus:border-blue-500 focus:bg-white outline-none transition-all font-mono font-bold uppercase" placeholder="e.g. XPERIENCE20">
+                </div>
+                
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="space-y-2">
+                        <label class="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Type</label>
+                        <select name="discount_type" class="w-full px-4 py-4 rounded-2xl border-2 border-slate-100 bg-slate-50 focus:border-blue-500 focus:bg-white outline-none transition-all font-bold">
+                            <option value="percentage">Percentage (%)</option>
+                            <option value="fixed">Fixed (₦)</option>
+                        </select>
+                    </div>
+                    <div class="space-y-2">
+                        <label class="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Value</label>
+                        <input type="number" name="discount_value" required class="w-full px-4 py-4 rounded-2xl border-2 border-slate-100 bg-slate-50 focus:border-blue-500 focus:bg-white outline-none transition-all font-bold" placeholder="0">
+                    </div>
+                </div>
+
+                <div class="space-y-2">
+                    <label class="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Expiry Date</label>
+                    <input type="date" name="expires_at" class="w-full px-6 py-4 rounded-2xl border-2 border-slate-100 bg-slate-50 focus:border-blue-500 focus:bg-white outline-none transition-all font-bold">
+                </div>
+
+                <div class="flex gap-4 pt-4">
+                    <button type="button" onclick="this.closest('#coupon-modal').remove()" class="flex-1 py-4 text-slate-400 font-black uppercase tracking-widest hover:text-slate-600 transition-all">Cancel</button>
+                    <button type="submit" class="flex-[2] py-4 bg-slate-900 text-white rounded-2xl font-black uppercase tracking-widest shadow-xl shadow-slate-200 hover:bg-slate-800 hover:-translate-y-1 transition-all">Create Coupon</button>
+                </div>
+            </form>
+        </div>
+    `;
+    document.body.appendChild(modal);
+    lucide.createIcons();
+
+    const form = document.getElementById('coupon-form');
+    form.onsubmit = async (e) => {
+        e.preventDefault();
+        const submitBtn = form.querySelector('button[type="submit"]');
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<span class="animate-pulse">Creating...</span>';
+
+        const formData = {
+            code: form.code.value.toUpperCase(),
+            discount_type: form.discount_type.value,
+            discount_value: parseFloat(form.discount_value.value),
+            expires_at: form.expires_at.value || null,
+            is_active: true
+        };
+
+        const success = await State.createCoupon(formData);
+        if (success) {
+            modal.remove();
+            Router.refresh(true);
+        } else {
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Create Coupon';
+        }
+    };
 };

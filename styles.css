@@ -391,7 +391,8 @@ body {
 
 /* Mobile Side Menu States */
 #mobile-side-menu.active {
-    pointer-events: auto;
+    pointer-events: auto !important;
+    visibility: visible !important;
 }
 
 #mobile-side-menu.active #mobile-menu-overlay {

@@ -3,12 +3,12 @@
  * Centralized page rendering for all user types
  */
 
-import { Data } from './data.js?v=3.1.5';
-import { State } from './state.js?v=3.1.5';
-import { Router } from './router.js?v=3.1.5';
-import { Components } from './components.js?v=3.1.5';
-import { Tracking } from './tracking.js?v=3.1.5';
-import { Auth } from './auth.js?v=3.1.5';
+import { Data } from './data.js?v=3.1.6';
+import { State } from './state.js?v=3.1.6';
+import { Router } from './router.js?v=3.1.6';
+import { Components } from './components.js?v=3.1.6';
+import { Tracking } from './tracking.js?v=3.1.6';
+import { Auth } from './auth.js?v=3.1.6';
 
 
 export const Pages = {
@@ -1181,7 +1181,7 @@ export const Pages = {
                             </div>
                         </div>
                         <div class="w-full md:w-1/2">
-                            ${Components.RandomProductScroll(State.get().products || [])}
+                            ${Components.CampaignSlider(State.get().campaigns)}
                         </div>
                     </div>
 
@@ -1284,7 +1284,7 @@ export const Pages = {
             const fetchKey = JSON.stringify({ category, search, page: currentPage, minPrice, maxPrice, rating });
             if (State._lastFetchKey !== fetchKey && !categoryLoading) {
                 State._lastFetchKey = fetchKey;
-                const fetchFilters = { page: currentPage, limit: 100 };
+                const fetchFilters = { page: currentPage, limit: 24 };
                 if (category) fetchFilters.category = categories.find(c => c.slug === category)?.name || category;
                 if (search) fetchFilters.search = search;
                 State.fetchProductPage(fetchFilters).then(() => Router.refresh());
@@ -6943,30 +6943,37 @@ export const Pages = {
 
                     <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-12">
                         <div class="lg:col-span-2 glass-card p-8 rounded-[2.5rem] border-white/50">
-                            <div class="flex justify-between items-center mb-8">
-                                <h3 class="font-bold text-xl text-slate-800">Active Campaigns</h3>
-                                <button onclick="window.createCampaign()" class="text-blue-600 font-bold text-sm bg-blue-50 px-4 py-2 rounded-xl hover:bg-blue-100 transition-all">+ New Campaign</button>
+                            <div class="flex items-center justify-between mb-8">
+                                <h3 class="font-bold text-xl text-slate-800">Promotions & Campaigns</h3>
+                                <button onclick="window.openBroadcastModal()" class="bg-blue-600 text-white px-6 py-3 rounded-2xl text-sm font-bold shadow-xl shadow-blue-200 hover:bg-blue-700 transition-all flex items-center gap-2">
+                                    <i data-lucide="megaphone" class="w-4 h-4"></i> Create Broadcast
+                                </button>
                             </div>
                             <div class="space-y-4">
                                 ${campaigns.length > 0 ? campaigns.map(campaign => `
                                     <div class="group border border-slate-100 rounded-2xl p-5 flex flex-col sm:flex-row items-center justify-between gap-4 hover:border-blue-200 hover:shadow-xl hover:shadow-blue-500/5 transition-all bg-white">
-                                        <div class="flex items-center gap-5">
-                                            <div class="w-14 h-14 bg-purple-100 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform">
-                                                <i data-lucide="megaphone" class="w-7 h-7 text-purple-600"></i>
+                                        <div class="flex items-center gap-5 flex-1">
+                                            <div class="w-14 h-14 ${campaign.type === 'broadcast' ? 'bg-purple-100' : 'bg-blue-100'} rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform flex-shrink-0">
+                                                <i data-lucide="${campaign.type === 'broadcast' ? 'megaphone' : 'image'}" class="w-7 h-7 ${campaign.type === 'broadcast' ? 'text-purple-600' : 'text-blue-600'}"></i>
                                             </div>
                                             <div>
                                                 <h4 class="font-bold text-slate-800 text-lg">${campaign.title}</h4>
-                                                <p class="text-sm text-slate-400">Created: ${new Date(campaign.created_at).toLocaleDateString()} • ${campaign.reach_count || 0} reach</p>
+                                                <div class="flex items-center gap-2 flex-wrap mt-1">
+                                                    <span class="px-2 py-0.5 rounded-full bg-slate-100 text-[10px] font-black uppercase text-slate-500">${campaign.type}</span>
+                                                    <span class="px-2 py-0.5 rounded-full bg-blue-50 text-[10px] font-black uppercase text-blue-600">${campaign.channel || 'all'}</span>
+                                                    <p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest">${new Date(campaign.created_at).toLocaleDateString()}</p>
+                                                </div>
                                             </div>
                                         </div>
-                                        <div class="text-right">
-                                            <div class="flex items-center gap-2 mb-2 justify-end">
-                                                <span class="text-xs font-bold text-slate-500">ROI</span>
-                                                <span class="text-sm font-bold text-green-600">${campaign.roi || '0'}%</span>
-                                            </div>
-                                            <div class="w-32 bg-slate-100 rounded-full h-2">
-                                                <div class="bg-green-500 h-2 rounded-full" style="width: ${Math.min(100, campaign.roi || 0)}%"></div>
-                                            </div>
+                                        <div class="flex items-center gap-3">
+                                            ${campaign.type === 'broadcast' ? `
+                                                <button onclick="State.retryBroadcastCampaign(${campaign.id})" class="p-3 hover:bg-blue-50 text-blue-600 rounded-xl transition-all" title="Resend Broadcast">
+                                                    <i data-lucide="rotate-cw" class="w-5 h-5"></i>
+                                                </button>
+                                            ` : ''}
+                                            <button onclick="State.deleteCampaign(${campaign.id})" class="p-3 hover:bg-red-50 text-red-500 rounded-xl transition-all" title="Delete Promotion">
+                                                <i data-lucide="trash-2" class="w-5 h-5"></i>
+                                            </button>
                                         </div>
                                     </div>
                                 `).join('') : `
@@ -7055,79 +7062,18 @@ export const Pages = {
                                     `).join('') : `
                                         <tr><td colspan="6" class="p-12 text-center text-slate-400">No coupons active</td></tr>
                                     `}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-
-                    <!-- Platform Broadcast -->
-                    <div class="mt-12 glass-card p-8 rounded-2xl border border-blue-100 bg-blue-50/30">
-                        <div class="flex items-center gap-3 mb-6">
-                            <div class="w-12 h-12 rounded-2xl bg-blue-600 flex items-center justify-center shadow-lg shadow-blue-200">
-                                <i data-lucide="megaphone" class="text-white"></i>
+                                     <!-- Tip Card -->
+                    <div class="mt-12 p-8 rounded-[2.5rem] bg-gradient-to-br from-blue-600 to-indigo-700 text-white shadow-2xl relative overflow-hidden">
+                        <div class="relative z-10 flex items-center gap-6">
+                            <div class="w-16 h-16 bg-white/20 backdrop-blur-md rounded-2xl flex items-center justify-center">
+                                <i data-lucide="lightbulb" class="w-8 h-8 text-yellow-300"></i>
                             </div>
                             <div>
-                                <h2 class="text-2xl font-bold text-slate-800">Platform-wide Broadcast</h2>
-                                <p class="text-slate-500 text-sm">Send a real-time notification to all users or specific roles.</p>
+                                <h3 class="text-xl font-bold mb-1">Marketing Tip</h3>
+                                <p class="text-blue-100 opacity-90 max-w-xl">Use the <b>Campaign Slider</b> to highlight new products on the homepage, and <b>Broadcasts</b> for time-sensitive flash sales. Combined, they increase conversion by up to 40%.</p>
                             </div>
                         </div>
-
-                        <form onsubmit="event.preventDefault(); window.broadcastAdminNotification(this);" class="space-y-6">
-                            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                <div class="space-y-2 col-span-1 md:col-span-2">
-                                    <label class="block text-xs font-black text-slate-400 uppercase tracking-widest">Notification Title</label>
-                                    <input type="text" name="title" placeholder="e.g., Flash Sale live now!" class="w-full p-4 bg-white border border-slate-200 rounded-[1.25rem] outline-none focus:border-blue-500 shadow-sm transition-all" required>
-                                </div>
-                                <div class="space-y-2">
-                                    <label class="block text-xs font-black text-slate-400 uppercase tracking-widest">Delivery Channel</label>
-                                    <select name="channel" class="w-full p-4 bg-white border border-slate-200 rounded-[1.25rem] outline-none focus:border-blue-500 shadow-sm transition-all font-bold text-slate-700">
-                                        <option value="push">Push Notification (App + Device)</option>
-                                        <option value="email">Email Campaign (Brevo)</option>
-                                        <option value="both">Both (Email & Push)</option>
-                                    </select>
-                                </div>
-                            </div>
-                            
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div class="space-y-2">
-                                    <label class="block text-xs font-black text-slate-400 uppercase tracking-widest">Target Audience</label>
-                                    <select name="role" class="w-full p-4 bg-white border border-slate-200 rounded-[1.25rem] outline-none focus:border-blue-500 shadow-sm transition-all font-bold text-slate-700">
-                                        <option value="">All Users</option>
-                                        <option value="consumer">Consumers</option>
-                                        <option value="business">Business Accounts</option>
-                                        <option value="supplier">Suppliers</option>
-                                        <option value="dropshipper">Dropshippers</option>
-                                    </select>
-                                </div>
-                                <div class="space-y-2">
-                                    <label class="block text-xs font-black text-slate-400 uppercase tracking-widest">Alert Type</label>
-                                    <select name="type" class="w-full p-4 bg-white border border-slate-200 rounded-[1.25rem] outline-none focus:border-blue-500 shadow-sm transition-all font-bold text-slate-700">
-                                        <option value="info">Information (Blue)</option>
-                                        <option value="success">Success (Green)</option>
-                                        <option value="warning">Alert (Orange)</option>
-                                        <option value="critical">Critical (Red)</option>
-                                    </select>
-                                </div>
-                            </div>
-
-                            <div class="space-y-2">
-                                <label class="block text-xs font-black text-slate-400 uppercase tracking-widest">Deep Link Path (Optional)</label>
-                                <input type="text" name="link" placeholder="e.g., #/order/123 or #/products" class="w-full p-4 bg-white border border-slate-200 rounded-[1.25rem] outline-none focus:border-blue-500 shadow-sm transition-all font-mono text-xs">
-                                <p class="text-[9px] text-slate-400">If provided, users will be taken to this page when clicking the notification.</p>
-                            </div>
-
-                            <div class="space-y-2">
-                                <label class="block text-xs font-black text-slate-400 uppercase tracking-widest">Message Content</label>
-                                <textarea name="message" rows="4" placeholder="Type your announcement here..." class="w-full p-4 bg-white border border-slate-200 rounded-[1.25rem] outline-none focus:border-blue-500 shadow-sm transition-all" required></textarea>
-                            </div>
-
-                            <div class="flex items-center justify-between pt-4">
-                                <p class="text-xs text-slate-400 max-w-sm">Push notifications are tracked for delivery and seen rates. Emails are sent via Brevo (hello@xperiencestore.store).</p>
-                                <button type="submit" class="bg-blue-600 text-white px-10 py-4 rounded-[1.25rem] font-bold hover:bg-blue-700 transition-all shadow-xl shadow-blue-200 flex items-center justify-center gap-3">
-                                    <i data-lucide="send" class="w-5 h-5"></i> Launch Broadcast
-                                </button>
-                            </div>
-                        </form>
+                        <div class="absolute -top-10 -right-10 w-40 h-40 bg-white/10 rounded-full blur-2xl"></div>
                     </div>
                 </div>
             `;
