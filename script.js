@@ -1194,7 +1194,7 @@ window.pauseCoupon = async (id) => {
         });
         if (res.ok) {
             Components.showNotification('Coupon status updated', 'success');
-            Router.refresh();
+            Components.refreshCouponsList();
         }
     } catch (error) {
         console.error('Pause Coupon Error:', error);
@@ -1210,7 +1210,7 @@ window.deleteCoupon = async (id) => {
         });
         if (res.ok) {
             Components.showNotification('Coupon deleted', 'success');
-            Router.refresh();
+            Components.refreshCouponsList();
         }
     } catch (error) {
         console.error('Delete Coupon Error:', error);

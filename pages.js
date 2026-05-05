@@ -7039,31 +7039,9 @@ export const Pages = {
                                         <th class="text-right p-6 last:rounded-r-3xl">Actions</th>
                                     </tr>
                                 </thead>
-                                <tbody class="divide-y divide-slate-50">
-                                    ${coupons.length > 0 ? coupons.map(c => `
-                                        <tr class="hover:bg-slate-50/50 transition-colors">
-                                            <td class="p-6 font-mono font-bold text-slate-800">${c.code}</td>
-                                            <td class="p-6 font-bold text-blue-600">${c.discount_type === 'percentage' ? c.discount_value + '%' : '₦' + Number(c.discount_value).toLocaleString()}</td>
-                                            <td class="p-6 text-slate-600">${c.usage_count} / ${c.usage_limit || '∞'}</td>
-                                            <td class="p-6">
-                                                <span class="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${c.is_active ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'}">
-                                                    ${c.is_active ? 'Active' : 'Paused'}
-                                                </span>
-                                            </td>
-                                            <td class="p-6 text-slate-500">${c.expires_at ? new Date(c.expires_at).toLocaleDateString() : 'Never'}</td>
-                                            <td class="p-6 text-right">
-                                                <div class="flex justify-end gap-2">
-                                                    <button onclick="window.pauseCoupon(${c.id})" class="p-2 hover:bg-white border border-transparent hover:border-slate-200 rounded-xl transition-all" title="${c.is_active ? 'Pause' : 'Resume'}">
-                                                        <i data-lucide="${c.is_active ? 'pause' : 'play'}" class="w-4 h-4 text-slate-400"></i>
-                                                    </button>
-                                                    <button onclick="window.deleteCoupon(${c.id})" class="p-2 hover:bg-red-50 rounded-xl transition-all" title="Delete">
-                                                        <i data-lucide="trash-2" class="w-4 h-4 text-red-500"></i>
-                                                    </button>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    `).join('') : `
-                                        <tr><td colspan="6" class="p-12 text-center text-slate-400">No coupons active</td></tr>
+                                <tbody id="admin-coupons-list" class="divide-y divide-slate-50">
+                                    ${coupons.length > 0 ? coupons.map(c => Components.CouponRow(c)).join('') : `
+                                        <tr><td colspan="6" class="p-12 text-center text-slate-400 italic font-medium">No active coupons found.</td></tr>
                                     `}
                                      <!-- Tip Card -->
                     <div class="mt-12 p-8 rounded-[2.5rem] bg-gradient-to-br from-blue-600 to-indigo-700 text-white shadow-2xl relative overflow-hidden">
