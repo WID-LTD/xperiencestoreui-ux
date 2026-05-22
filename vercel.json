@@ -12,6 +12,15 @@
           "value": "text/plain"
         }
       ]
+    },
+    {
+      "source": "/google039751d2f5f591a7.html",
+      "headers": [
+        {
+          "key": "Content-Type",
+          "value": "text/html"
+        }
+      ]
     }
   ],
   "rewrites": [
@@ -22,6 +31,10 @@
     {
       "source": "/sitemap.xml",
       "destination": "https://api.xperiencestore.store/sitemap.xml"
+    },
+    {
+      "source": "/google039751d2f5f591a7.html",
+      "destination": "/google039751d2f5f591a7.html"
     },
     {
       "source": "/(.*)",
