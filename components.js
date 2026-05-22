@@ -3,8 +3,8 @@
  * Library of reusable components for consistent UI
  */
 
-import { State } from './state.js?v=3.1.6';
-import { Router } from './router.js?v=3.1.6';
+import { State } from './state.js?v=3.2.0';
+import { Router } from './router.js?v=3.2.0';
 
 export const Components = {
     // Search Suggestions Component (Glassmorphism)
@@ -1133,9 +1133,24 @@ export const Components = {
             setTimeout(() => modalEl.remove(), 200);
         };
 
-        confirmBtn.onclick = () => {
-            onConfirm();
-            close();
+        confirmBtn.onclick = async () => {
+            const originalText = confirmBtn.innerHTML;
+            confirmBtn.innerHTML = '<div class="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mx-auto"></div>';
+            confirmBtn.disabled = true;
+            try {
+                // If onConfirm returns false, don't close. Else close.
+                const result = await onConfirm();
+                if (result !== false) {
+                    close();
+                } else {
+                    confirmBtn.innerHTML = originalText;
+                    confirmBtn.disabled = false;
+                }
+            } catch (e) {
+                console.error(e);
+                confirmBtn.innerHTML = originalText;
+                confirmBtn.disabled = false;
+            }
         };
 
         cancelBtn.onclick = close;

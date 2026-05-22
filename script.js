@@ -3,16 +3,17 @@
  * Wires together router, state, pages, and components
  */
 
-import { Auth } from './auth.js?v=3.1.6';
-import { Router } from './router.js?v=3.1.6';
-import { State } from './state.js?v=3.1.6';
-import { Data } from './data.js?v=3.1.6';
-import { Components } from './components.js?v=3.1.6';
-import { Pages } from './pages.js?v=3.1.6';
-import { Payment } from './payment.js?v=3.1.6';
-import { PaymentCheckoutModal } from './paymentModal.js?v=3.1.6';
-import { Gigo } from './gigo.js?v=3.1.6';
-import { Chat } from './chat.js?v=3.1.6';
+import { Auth } from './auth.js?v=3.2.0';
+import { Router } from './router.js?v=3.2.0';
+import { State } from './state.js?v=3.2.0';
+import { Data } from './data.js?v=3.2.0';
+import { Components } from './components.js?v=3.2.0';
+import { Pages } from './pages.js?v=3.2.0';
+import { SupportPages } from './support.js?v=3.2.0';
+import { Payment } from './payment.js?v=3.2.0';
+import { PaymentCheckoutModal } from './paymentModal.js?v=3.2.0';
+import { Gigo } from './gigo.js?v=3.2.0';
+import { Chat } from './chat.js?v=3.2.0';
 
 
 // Initialize application
@@ -35,6 +36,7 @@ window.Router = Router;
 window.State = State;
 window.Auth = Auth;
 window.Pages = Pages;
+window.SupportPages = SupportPages;
 window.Data = Data;
 window.Components = Components;
 
@@ -294,7 +296,7 @@ function initializeRouter() {
         '/dropshipper/social': () => Auth.requireRole('dropshipper', () => renderPage(Pages.dropshipper.social())),
 
         // Warehouse routes
-        '/warehouse/receiving': () => Auth.requireRole('warehouse', () => renderPage(Pages.warehouse.receiving())),
+        '/warehouse/receiving': () => Auth.requireRole('warehouse', () => State.fetchWROs().then(() => renderPage(Pages.warehouse.receiving()))),
         '/warehouse/inventory': () => Auth.requireRole('warehouse', () => renderPage(Pages.warehouse.inventory())),
         '/warehouse/fulfillment': () => Auth.requireRole('warehouse', () => renderPage(Pages.warehouse.fulfillment())),
         '/warehouse/shipping': () => Auth.requireRole('warehouse', () => renderPage(Pages.warehouse.shipping())),
@@ -308,7 +310,8 @@ function initializeRouter() {
         '/supplier/orders': () => Auth.requireRole('supplier', () => renderPage(Pages.supplier.orders())),
         '/supplier/rfq': () => Auth.requireRole('supplier', () => renderPage(Pages.supplier.rfq())),
         '/supplier/finance': () => Auth.requireRole('supplier', () => renderPage(Pages.supplier.finance())),
-        '/supplier/reports': () => Auth.requireRole('supplier', () => renderPage(Pages.supplier.reports())),
+        '/supplier/analytics': () => Auth.requireRole('supplier', () => renderPage(Pages.supplier.analytics())),
+        '/supplier/settings': () => Auth.requireRole('supplier', () => renderPage(Pages.supplier.settings())),
         // Admin routes
         '/admin/users': () => Auth.requireRole('admin', () => State.fetchAdminUsers().then(() => renderPage(Pages.admin.users()))),
         '/admin/orders': () => Auth.requireRole('admin', () => State.fetchAdminOrders().then(() => renderPage(Pages.admin.orders()))),
@@ -318,12 +321,13 @@ function initializeRouter() {
         '/admin/settings': () => Auth.requireRole('admin', () => State.fetchAdminSettings().then(() => renderPage(Pages.admin.settings()))),
 
         // Support pages
-        '/about': () => renderPage(Pages.support.about()),
-        '/contact': () => renderPage(Pages.support.contact()),
-        '/faq': () => renderPage(Pages.support.faq()),
-        '/shipping': () => renderPage(Pages.support.shipping()),
-        '/privacy': () => renderPage(Pages.support.privacy()),
-        '/terms': () => renderPage(Pages.support.terms()),
+        '/about': () => renderPage(SupportPages.about()),
+        '/contact': () => renderPage(SupportPages.contact()),
+        '/faq': () => renderPage(SupportPages.faq()),
+        '/shipping': () => renderPage(SupportPages.shipping()),
+        '/privacy': () => renderPage(SupportPages.privacy()),
+        '/terms': () => renderPage(SupportPages.terms()),
+        '/rfq-guide': () => renderPage(SupportPages.rfq()),
 
         // Search
         '/search': (params) => renderPage(Pages.search(params)),

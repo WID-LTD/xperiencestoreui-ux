@@ -3,6 +3,8 @@
  * Hash-based routing for single-page navigation
  */
 
+import { SEO } from './seo.js?v=3.2.0';
+
 export const Router = {
     routes: {},
     currentRoute: null,
@@ -10,6 +12,7 @@ export const Router = {
     // Initialize router
     init(routes) {
         this.routes = routes;
+        SEO.init();
 
         // Listen for hash changes
         window.addEventListener('hashchange', () => this.handleRoute());
@@ -44,6 +47,12 @@ export const Router = {
         if (route && route.handler) {
             // Merge route params (from URL path) with query params
             const allParams = { ...route.params, ...queryParams };
+            
+            // Format title based on route for SEO
+            let readablePath = path === '/' ? 'Home' : path.split('/').pop().replace(/-/g, ' ');
+            readablePath = readablePath.charAt(0).toUpperCase() + readablePath.slice(1);
+            SEO.updateMeta(readablePath);
+
             route.handler(allParams);
         } else {
             console.warn('No route found for:', path);

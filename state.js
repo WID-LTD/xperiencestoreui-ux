@@ -76,6 +76,7 @@ export const State = {
         supplierProducts: [],
         rfqs: [],
         inventory: [],
+        wros: [],
         loading: false,
         adminLogs: [],
         adminLogArchives: [],
@@ -124,6 +125,7 @@ export const State = {
                 dataFetches.push(this.fetchSupplierProducts());
             } else if (role === 'warehouse') {
                 dataFetches.push(this.fetchInventory());
+                dataFetches.push(this.fetchWROs());
             } else if (role === 'business') {
                 dataFetches.push(this.fetchRFQs());
             } else if (role === 'dropshipper') {
@@ -402,7 +404,44 @@ export const State = {
 
     isLoading() { return this._state.loading || false; },
     getProducts() { return this._state.products || []; },
-    getInventory() { return this._state.inventory || []; },
+    getInventory() {
+        return this._state.inventory || [];
+    },
+
+    getWROs() {
+        return this._state.wros || [];
+    },
+
+    async fetchWROs(silent = false) {
+        if (!silent) this.set({ loading: true });
+        try {
+            const res = await fetch(`${API}/warehouse/wros`, { headers: authHeaders() });
+            if (res.ok) {
+                const data = await res.json();
+                this._state.wros = data;
+            }
+        } catch (err) {
+            console.error('Fetch WROs error:', err);
+        } finally {
+            if (!silent) this.set({ loading: false });
+        }
+    },
+
+    async completeWROReceipt(id) {
+        try {
+            const res = await fetch(`${API}/warehouse/wros/${id}/complete`, {
+                method: 'POST',
+                headers: authHeaders()
+            });
+            if (res.ok) {
+                await this.fetchWROs(true);
+                return true;
+            }
+        } catch (err) {
+            console.error('Complete WRO error:', err);
+        }
+        return false;
+    },
 
     // Initialize state from localStorage
     init() {
@@ -1930,6 +1969,63 @@ export const State = {
         } catch (err) {
             console.error('Delete product error:', err);
             this.notify('Network error deleting product', 'error');
+        }
+        return false;
+    },
+
+    async submitWRO(orderId) {
+        try {
+            const res = await fetch(`${API}/supplier/orders/${orderId}/shipment-docs`, {
+                method: 'POST',
+                headers: authHeaders(),
+                body: JSON.stringify({
+                    trackingNumber: 'WRO-TRK-' + Date.now(),
+                    commercialInvoiceUrl: 'https://example.com/invoice',
+                    packingListUrl: 'https://example.com/packing'
+                })
+            });
+            if (res.ok) return true;
+            const err = await res.json();
+            this.notify(err.message || 'Failed to submit WRO', 'error');
+        } catch (e) {
+            console.error(e);
+            this.notify('Network error', 'error');
+        }
+        return false;
+    },
+
+    async completeWROReceipt(orderId) {
+        try {
+            const res = await fetch(`${API}/warehouse/wro/${orderId}/complete`, {
+                method: 'POST',
+                headers: authHeaders()
+            });
+            if (res.ok) {
+                await this.fetchWROs(true);
+                return true;
+            }
+            const err = await res.json();
+            this.notify(err.message || 'Failed to complete WRO', 'error');
+        } catch (e) {
+            console.error(e);
+            this.notify('Network error', 'error');
+        }
+        return false;
+    },
+
+    async updateSupplierProfile(profileData) {
+        try {
+            const res = await fetch(`${API}/supplier/profile`, {
+                method: 'PUT',
+                headers: authHeaders(),
+                body: JSON.stringify(profileData)
+            });
+            if (res.ok) return true;
+            const err = await res.json();
+            this.notify(err.message || 'Failed to update profile', 'error');
+        } catch (e) {
+            console.error(e);
+            this.notify('Network error', 'error');
         }
         return false;
     }

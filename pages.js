@@ -3,13 +3,12 @@
  * Centralized page rendering for all user types
  */
 
-import { Data } from './data.js?v=3.1.6';
-import { State } from './state.js?v=3.1.6';
-import { Router } from './router.js?v=3.1.6';
-import { Components } from './components.js?v=3.1.6';
-import { Tracking } from './tracking.js?v=3.1.6';
-import { Auth } from './auth.js?v=3.1.6';
-
+import { Data } from './data.js?v=3.2.0';
+import { State } from './state.js?v=3.2.0';
+import { Router } from './router.js?v=3.2.0';
+import { Components } from './components.js?v=3.2.0';
+import { Tracking } from './tracking.js?v=3.2.0';
+import { Auth } from './auth.js?v=3.2.0';
 
 export const Pages = {
     // ==================== SHARED PAGES ====================
@@ -49,7 +48,7 @@ export const Pages = {
     paymentVerify(params) {
         // Parse possible Paystack root URL query parameters
         const searchParams = new URLSearchParams(window.location.search);
-        
+
         const gateway = params.gateway || searchParams.get('gateway') || 'paystack';
         const status = params.status || 'success';
         const ref = params.ref || searchParams.get('reference') || searchParams.get('trxref') || params.reference;
@@ -90,7 +89,7 @@ export const Pages = {
                     if (successEl) successEl.classList.remove('hidden');
                     // Auto-navigate after 2s
                     setTimeout(() => {
-                        window.location.href = '/#/account/orders'; 
+                        window.location.href = '/#/account/orders';
                         window.location.reload();
                     }, 2000);
                 } else {
@@ -258,7 +257,7 @@ export const Pages = {
         setTimeout(async () => {
             const container = document.getElementById('order-detail-container');
             const order = await State.fetchOrderById(id);
-            
+
             if (!order) {
                 container.innerHTML = Components.EmptyState('package', 'Order Not Found', 'We couldn\'t find the order details you\'re looking for.');
                 return;
@@ -1089,13 +1088,13 @@ export const Pages = {
             if (!fetchedProducts && !isLoading) {
                 State.fetchProducts({ limit: 50 }).then(() => Router.refresh());
             }
-            
+
             return `
                 <div class="px-4 sm:px-0">
                     ${Components.Breadcrumbs([
-                        { label: 'Home', link: '/' },
-                        { label: 'All Categories' }
-                    ])}
+                { label: 'Home', link: '/' },
+                { label: 'All Categories' }
+            ])}
 
                     <div class="text-center mb-12">
                         <h1 class="text-4xl font-bold text-slate-800 mb-4">Browse by Category</h1>
@@ -1299,7 +1298,7 @@ export const Pages = {
             // Client-side filters on the returned page (price/rating — not worth a round-trip)
             if (minPrice) displayProducts = displayProducts.filter(p => (State.get().userRole === 'business' ? p.bulkPrice : p.price) >= parseFloat(minPrice));
             if (maxPrice) displayProducts = displayProducts.filter(p => (State.get().userRole === 'business' ? p.bulkPrice : p.price) <= parseFloat(maxPrice));
-            if (rating)   displayProducts = displayProducts.filter(p => p.rating >= parseFloat(rating));
+            if (rating) displayProducts = displayProducts.filter(p => p.rating >= parseFloat(rating));
             if (search) {
                 displayProducts = displayProducts.map(p => {
                     let w = 0; const q = search.toLowerCase();
@@ -1317,10 +1316,10 @@ export const Pages = {
             function buildPageUrl(p) {
                 var qs = 'page=' + p;
                 if (category) qs += '&category=' + encodeURIComponent(category);
-                if (search)   qs += '&search='   + encodeURIComponent(search);
-                if (minPrice) qs += '&minPrice='  + minPrice;
-                if (maxPrice) qs += '&maxPrice='  + maxPrice;
-                if (rating)   qs += '&rating='    + rating;
+                if (search) qs += '&search=' + encodeURIComponent(search);
+                if (minPrice) qs += '&minPrice=' + minPrice;
+                if (maxPrice) qs += '&maxPrice=' + maxPrice;
+                if (rating) qs += '&rating=' + rating;
                 return '/products?' + qs;
             }
 
@@ -1350,7 +1349,7 @@ export const Pages = {
                     ' class="flex items-center gap-1 px-4 py-2 rounded-xl border-2 font-bold text-sm transition-all ' + prevClass + '">' +
                     '<i data-lucide="chevron-left" class="w-4 h-4"></i> Prev</button>';
 
-                pageNums.forEach(function(p) {
+                pageNums.forEach(function (p) {
                     if (p === '...') {
                         html += '<span class="px-2 text-slate-400 font-bold select-none">…</span>';
                     } else {
@@ -1373,30 +1372,30 @@ export const Pages = {
             // ---- Pre-compute dynamic class strings to avoid template literal parsing errors ----
             var allCatActiveClass = !category ? 'border-blue-500 bg-blue-50/50 text-blue-600' : 'border-transparent hover:bg-slate-50 text-slate-600';
 
-            var allCatCountClass  = !category ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-400';
+            var allCatCountClass = !category ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-400';
             var loadingStatusHtml = categoryLoading
                 ? '<span class="inline-flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-blue-400 animate-ping inline-block"></span> Loading products\u2026</span>'
                 : 'Showing <b>' + displayProducts.length + '</b> products' + (totalCount ? ' of <b>' + totalCount.toLocaleString() + '</b> total' : '');
 
-            var categoryItemsHtml = categories.map(function(cat) {
+            var categoryItemsHtml = categories.map(function (cat) {
                 var isActive = category === cat.slug;
-                var cls  = isActive ? 'border-blue-500 bg-blue-50/50 text-blue-600' : 'border-transparent hover:bg-slate-50 text-slate-600';
-                var cnt  = isActive ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-400';
+                var cls = isActive ? 'border-blue-500 bg-blue-50/50 text-blue-600' : 'border-transparent hover:bg-slate-50 text-slate-600';
+                var cnt = isActive ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-400';
                 return '<div onclick="Router.navigate(\'/products?category=' + cat.slug + '\')" class="flex items-center justify-between p-2 rounded-xl border-2 ' + cls + ' cursor-pointer transition-all group">'
-                     + '<span class="text-sm font-bold capitalize">' + cat.name + '</span>'
-                     + '<span class="text-[10px] font-bold ' + cnt + ' px-2 py-0.5 rounded-full group-hover:bg-blue-100 group-hover:text-blue-600">' + cat.count + '</span>'
-                     + '</div>';
+                    + '<span class="text-sm font-bold capitalize">' + cat.name + '</span>'
+                    + '<span class="text-[10px] font-bold ' + cnt + ' px-2 py-0.5 rounded-full group-hover:bg-blue-100 group-hover:text-blue-600">' + cat.count + '</span>'
+                    + '</div>';
             }).join('');
 
-            var ratingItemsHtml = [1, 2, 3, 4, 5].map(function(r) {
+            var ratingItemsHtml = [1, 2, 3, 4, 5].map(function (r) {
                 var isActive = rating == r;
                 var catParam = category ? '&category=' + category : '';
-                var cls  = isActive ? 'border-blue-500 bg-blue-50 text-blue-600' : 'border-slate-100 hover:border-slate-300';
+                var cls = isActive ? 'border-blue-500 bg-blue-50 text-blue-600' : 'border-slate-100 hover:border-slate-300';
                 var star = isActive ? 'fill-blue-500' : 'fill-slate-200 text-slate-300';
                 return '<button onclick="Router.navigate(\'/products?rating=' + r + catParam + '\')" class="p-2 rounded-xl border-2 ' + cls + ' transition-all flex flex-col items-center gap-1">'
-                     + '<span class="text-xs font-bold">' + r + '</span>'
-                     + '<i data-lucide="star" class="w-3 h-3 ' + star + '"></i>'
-                     + '</button>';
+                    + '<span class="text-xs font-bold">' + r + '</span>'
+                    + '<i data-lucide="star" class="w-3 h-3 ' + star + '"></i>'
+                    + '</button>';
             }).join('');
 
             var productsGridHtml;
@@ -1406,7 +1405,7 @@ export const Pages = {
                     + '</div>';
             } else if (displayProducts.length > 0) {
                 productsGridHtml = '<div class="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">'
-                    + displayProducts.map(function(p) { return Components.ProductCard(p); }).join('')
+                    + displayProducts.map(function (p) { return Components.ProductCard(p); }).join('')
                     + '</div>'
                     + buildPaginationBar();
             } else {
@@ -1414,14 +1413,14 @@ export const Pages = {
                     '<button onclick="Router.navigate(\'/products\')" class="bg-blue-600 text-white px-6 py-3 rounded-xl font-bold">Clear Filters</button>');
             }
 
-            var breadcrumbLabel = category ? (categories.find(function(c) { return c.slug === category; }) || {}).name || 'Category' : 'All Products';
+            var breadcrumbLabel = category ? (categories.find(function (c) { return c.slug === category; }) || {}).name || 'Category' : 'All Products';
 
             return `
                 <div class="px-4 sm:px-0">
                     ${Components.Breadcrumbs([
-                        { label: 'Home', link: '/' },
-                        { label: breadcrumbLabel }
-                    ])}
+                { label: 'Home', link: '/' },
+                { label: breadcrumbLabel }
+            ])}
 
                     <div class="flex flex-col lg:flex-row gap-8">
                         <!-- Filters Sidebar -->
@@ -3025,7 +3024,7 @@ export const Pages = {
         // Filter by search query using advanced fuzzy token ranking
         if (q) {
             const query = q.toLowerCase();
-            
+
             // 1. Ensure pre-computation index exists
             if (products.length > 0 && !products[0]._searchTerms) {
                 for (let i = 0; i < products.length; i++) {
@@ -3045,30 +3044,30 @@ export const Pages = {
             for (let i = 0; i < products.length; i++) {
                 const p = products[i];
                 let matchedTokensCount = 0;
-                
+
                 for (let t = 0; t < tokens.length; t++) {
                     if (p._searchTerms.includes(tokens[t])) {
                         matchedTokensCount++;
                     }
                 }
-                
+
                 const matchRatio = tokens.length > 0 ? (matchedTokensCount / tokens.length) : 0;
-                
+
                 if (matchRatio < 0.25) continue; // Reject if under 25% match rate
 
                 let weight = 0;
-                
+
                 // Massive ranking boost based on percentage hitting thresholds
                 if (matchRatio >= 0.50) weight += 1000; // Rank as 100%
                 else if (matchRatio >= 0.25) weight += 200; // Still passes, rank lower
-                 
-                weight += Math.pow(matchedTokensCount, 2) * 5; 
+
+                weight += Math.pow(matchedTokensCount, 2) * 5;
 
                 if (p._nameLower === query) weight += 500;
                 else if (p._nameLower.startsWith(query)) weight += 100;
                 else if (p._nameLower.includes(query)) weight += 30;
 
-                for(let t = 0; t < tokens.length; t++) {
+                for (let t = 0; t < tokens.length; t++) {
                     if (p._nameLower.includes(tokens[t])) weight += 15;
                     if (p._catLower.includes(tokens[t])) weight += 5;
                 }
@@ -3078,7 +3077,7 @@ export const Pages = {
                     matches.push(p);
                 }
             }
-            
+
             // Sort by search relevance weight
             products = matches.sort((a, b) => b._searchWeight - a._searchWeight);
         }
@@ -3133,7 +3132,7 @@ export const Pages = {
 
                     <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6 mb-8">
                         ${Components.StatCard('Active Users', '50K+', 'users', 'blue')}
-                        ${Components.StatCard('Products', '1M+', 'package', 'green')}
+                        ${Components.StatCard('Products', '2M+', 'package', 'green')}
                         ${Components.StatCard('Countries', '150+', 'globe', 'orange')}
                     </div>
                 </div>
@@ -3332,11 +3331,11 @@ export const Pages = {
                         </div>
                         <div class="grid grid-cols-1 gap-4">
                             ${(() => {
-                                const rfqsList = State.getRFQs() || [];
-                                if (rfqsList.length === 0) {
-                                    return '<div class="glass-card p-8 text-center text-slate-400">No active RFQs. <a href="#/business/rfq/create" class="text-blue-600 font-bold hover:underline">Create one</a> to get started.</div>';
-                                }
-                                return rfqsList.map(rfq => `
+                    const rfqsList = State.getRFQs() || [];
+                    if (rfqsList.length === 0) {
+                        return '<div class="glass-card p-8 text-center text-slate-400">No active RFQs. <a href="#/business/rfq/create" class="text-blue-600 font-bold hover:underline">Create one</a> to get started.</div>';
+                    }
+                    return rfqsList.map(rfq => `
                                 <div class="glass-card p-6 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-4 hover:shadow-lg transition-all border border-transparent hover:border-blue-100">
                                     <div class="flex-1 w-full text-center sm:text-left">
                                         <div class="flex flex-wrap items-center justify-center sm:justify-start gap-3 mb-2">
@@ -3355,7 +3354,7 @@ export const Pages = {
                                     </button>
                                 </div>
                                 `).join('');
-                            })()}
+                })()}
                         </div>
                     </div>
 
@@ -3528,12 +3527,41 @@ export const Pages = {
                             </div>
 
                             <div class="glass-card p-6 rounded-2xl">
+                                <h3 class="font-bold mb-4">About Us</h3>
+                                <p class="text-sm text-slate-600 mb-6">${supplier.about_me || 'A premium supplier on our platform.'}</p>
+                                
                                 <h3 class="font-bold mb-4">Certifications</h3>
-                                <div class="flex flex-wrap gap-2">
+                                <div class="flex flex-wrap gap-2 mb-6">
                                     ${(supplier.certifications || []).map(cert => `
-                                        <span class="bg-blue-100 text-blue-600 px-3 py-1 rounded-full text-xs font-bold">${cert}</span>
+                                        <span class="bg-blue-100 text-blue-600 px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1">
+                                            <i data-lucide="award" class="w-3 h-3"></i> ${cert.name || cert}
+                                        </span>
                                     `).join('')}
                                 </div>
+                                
+                                ${(supplier.factory_tours || []).length > 0 ? `
+                                    <h3 class="font-bold mb-4">Factory Virtual Tours</h3>
+                                    <div class="space-y-2 mb-6">
+                                        ${supplier.factory_tours.map(tour => `
+                                            <a href="${tour}" target="_blank" class="flex items-center gap-2 text-sm text-blue-600 hover:underline">
+                                                <i data-lucide="video" class="w-4 h-4"></i> View Factory Tour
+                                            </a>
+                                        `).join('')}
+                                    </div>
+                                ` : ''}
+
+                                ${(supplier.verified_videos || []).length > 0 ? `
+                                    <h3 class="font-bold mb-4">Verified Videos</h3>
+                                    <div class="grid grid-cols-2 gap-2">
+                                        ${supplier.verified_videos.map(video => `
+                                            <div class="aspect-video bg-slate-100 rounded-lg flex items-center justify-center text-slate-400">
+                                                <a href="${video}" target="_blank" title="Play Video">
+                                                    <i data-lucide="play-circle" class="w-8 h-8 text-blue-600 hover:scale-110 transition-transform"></i>
+                                                </a>
+                                            </div>
+                                        `).join('')}
+                                    </div>
+                                ` : ''}
                             </div>
                         </div>
 
@@ -3934,9 +3962,9 @@ export const Pages = {
                             </h3>
                             <div class="space-y-4">
                                 ${stats.sales_history && stats.sales_history.length > 0 ? stats.sales_history.map(item => {
-                                    const max = Math.max(...stats.sales_history.map(s => s.revenue || 1));
-                                    const percentage = ((item.revenue / max) * 100).toFixed(0);
-                                    return `
+                const max = Math.max(...stats.sales_history.map(s => s.revenue || 1));
+                const percentage = ((item.revenue / max) * 100).toFixed(0);
+                return `
                                         <div>
                                             <div class="flex items-center justify-between mb-2">
                                                 <span class="text-xs font-bold text-slate-500">${item.month || item.day}</span>
@@ -3947,7 +3975,7 @@ export const Pages = {
                                             </div>
                                         </div>
                                     `;
-                                }).join('') : `
+            }).join('') : `
                                     <div class="text-center py-8 text-slate-400">
                                         <p class="text-sm italic">No sales data available for this week</p>
                                     </div>
@@ -4469,7 +4497,7 @@ export const Pages = {
 
         analytics() {
             const stats = State.get().dropshipperStats || { total_sales: 0, total_orders: 0, conversion: 0, avg_order: 0, total_products: 0, total_revenue: 0 };
-            
+
             return `
                 <div class="max-w-7xl mx-auto">
                     <h1 class="text-3xl font-bold mb-8">Store Analytics</h1>
@@ -4783,7 +4811,7 @@ export const Pages = {
             setTimeout(async () => {
                 const container = document.getElementById('api-keys-list');
                 const keys = await State.fetchAPIKeys();
-                
+
                 if (keys && keys.length > 0) {
                     container.innerHTML = keys.map(k => `
                         <div class="p-4 border border-slate-100 rounded-xl flex items-center justify-between bg-white shadow-sm mb-3">
@@ -4908,10 +4936,10 @@ export const Pages = {
 
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
                         ${[
-                            { name: 'Instagram', icon: 'instagram', color: 'pink', status: 'Connected', followers: '12.4k' },
-                            { name: 'Facebook', icon: 'facebook', color: 'blue', status: 'Connected', followers: '8.2k' },
-                            { name: 'TikTok', icon: 'music', color: 'slate', status: 'Connect Now', followers: '-' }
-                        ].map(platform => `
+                    { name: 'Instagram', icon: 'instagram', color: 'pink', status: 'Connected', followers: '12.4k' },
+                    { name: 'Facebook', icon: 'facebook', color: 'blue', status: 'Connected', followers: '8.2k' },
+                    { name: 'TikTok', icon: 'music', color: 'slate', status: 'Connect Now', followers: '-' }
+                ].map(platform => `
                             <div class="glass-card p-8 rounded-[2rem] text-center group hover:border-${platform.color}-200 transition-all cursor-pointer">
                                 <div class="w-20 h-20 bg-${platform.color}-100 rounded-[2.5rem] flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform">
                                     <i data-lucide="${platform.icon}" class="w-10 h-10 text-${platform.color}-600"></i>
@@ -5240,63 +5268,72 @@ export const Pages = {
 
                     <!-- Incoming Shipments -->
                     <div class="space-y-4">
-                        ${[1, 2, 3, 4].map(i => `
+                        ${State.getWROs().length === 0 ? '<div class="text-center p-8 text-slate-500">No incoming shipments found.</div>' : ''}
+                        ${State.getWROs().map((wro, idx) => {
+                const isArrived = wro.order_status === 'delivered_to_warehouse';
+                const wroData = typeof wro.wro_data === 'string' ? JSON.parse(wro.wro_data) : (wro.wro_data || {});
+                const totalItems = (wroData.items || []).reduce((sum, item) => sum + (Number(item.quantity) || 0), 0);
+                const expectedDate = new Date(wro.created_at);
+                expectedDate.setDate(expectedDate.getDate() + 5); // Approximate 5 days delivery
+
+                return `
                             <div class="glass-card p-6 rounded-2xl">
                                 <div class="flex items-start justify-between mb-4">
                                     <div>
-                                        <h3 class="text-xl font-bold mb-1">PO-${1000 + i}</h3>
-                                        <p class="text-sm text-slate-600">Expected: Jan ${18 + i}, 2026</p>
+                                        <h3 class="text-xl font-bold mb-1">${wro.wro_number || 'WRO-UNKNOWN'}</h3>
+                                        <p class="text-sm text-slate-600">Expected: ${expectedDate.toLocaleDateString()}</p>
                                     </div>
-                                    <span class="badge-${i === 1 ? 'green' : 'orange'} px-3 py-1 rounded-full text-xs font-bold">
-                                        ${i === 1 ? 'Arrived' : 'In Transit'}
+                                    <span class="badge-${isArrived ? 'green' : 'orange'} px-3 py-1 rounded-full text-xs font-bold">
+                                        ${isArrived ? 'Arrived' : 'In Transit'}
                                     </span>
                                 </div>
 
                                 <div class="grid grid-cols-4 gap-4 mb-4 text-sm">
                                     <div>
                                         <p class="text-slate-500">Supplier</p>
-                                        <p class="font-bold">Supplier ${i}</p>
+                                        <p class="font-bold">${wro.supplier_name || 'Unknown Supplier'}</p>
                                     </div>
                                     <div>
                                         <p class="text-slate-500">Items</p>
-                                        <p class="font-bold">${50 + i * 20} units</p>
+                                        <p class="font-bold">${totalItems || 'N/A'} units</p>
                                     </div>
                                     <div>
                                         <p class="text-slate-500">Tracking</p>
-                                        <p class="font-bold">TRK${Math.random().toString().slice(2, 14)}</p>
+                                        <p class="font-bold">${wro.tracking_number || wro.wro_number.split('-').pop()}</p>
                                     </div>
                                     <div>
                                         <p class="text-slate-500">Priority</p>
-                                        <p class="font-bold ${i <= 2 ? 'text-red-600' : 'text-blue-600'}">${i <= 2 ? 'High' : 'Normal'}</p>
+                                        <p class="font-bold ${idx <= 1 ? 'text-red-600' : 'text-blue-600'}">${idx <= 1 ? 'High' : 'Normal'}</p>
                                     </div>
                                 </div>
 
-                                ${i === 1 ? `
+                                ${!isArrived ? `
                                     <div class="border-t pt-4">
                                         <h4 class="font-bold mb-3">Receiving Checklist</h4>
                                         <div class="space-y-2 mb-4">
-                                            ${['Verify quantities', 'Inspect quality', 'Update inventory', 'Generate labels'].map((task, idx) => `
+                                            ${['Verify quantities', 'Inspect quality', 'Update inventory', 'Generate labels'].map((task, checkIdx) => `
                                                 <label class="flex items-center gap-2 cursor-pointer">
-                                                    <input type="checkbox" ${idx === 0 ? 'checked' : ''} class="rounded">
+                                                    <input type="checkbox" ${checkIdx === 0 ? 'checked' : ''} class="rounded">
                                                     <span class="text-sm">${task}</span>
                                                 </label>
                                             `).join('')}
                                         </div>
                                         <div class="flex gap-3">
-                                            <button class="flex-1 bg-orange-600 text-white py-3 rounded-xl font-bold hover:bg-orange-700 transition-all">
-                                                Complete Receipt
+                                            <button onclick="window.completeWROReceipt(${wro.id})" class="flex-1 bg-orange-600 text-white py-3 rounded-xl font-bold hover:bg-orange-700 transition-all">
+                                                Complete Receipt & Increment Stock
                                             </button>
-                                            <button onclick="State.printReceivingSlip(${1000 + i})" class="flex-1 border-2 border-blue-600 text-blue-600 py-3 rounded-xl font-bold hover:bg-blue-50 transition-all">
+                                            <button onclick="State.printReceivingSlip(${wro.order_id})" class="flex-1 border-2 border-blue-600 text-blue-600 py-3 rounded-xl font-bold hover:bg-blue-50 transition-all">
                                                 <i data-lucide="printer" class="w-4 h-4 inline mr-2"></i> Print Slip
-                                            </button>
-                                            <button class="border-2 border-slate-300 px-6 rounded-xl font-bold hover:bg-slate-50 transition-all">
-                                                Report Issue
                                             </button>
                                         </div>
                                     </div>
-                                ` : ''}
+                                ` : `
+                                    <div class="border-t pt-4 text-green-600 font-bold">
+                                        <i data-lucide="check-circle" class="w-5 h-5 inline mr-1"></i> Receipt Completed
+                                    </div>
+                                `}
                             </div>
-                        `).join('')}
+                        `}).join('')}
                     </div>
                 </div>
             `;
@@ -6056,11 +6093,24 @@ export const Pages = {
                                     </div>
                                 </div>
 
-                                <div class="flex justify-end gap-3">
-                                    <button onclick="window.printInvoice(${order.order_id})" class="px-6 py-2 border border-slate-300 rounded-lg hover:bg-slate-50 font-bold text-sm text-slate-600 transition-all flex items-center gap-2">
-                                        <i data-lucide="printer" class="w-4 h-4"></i> Print Invoice
-                                    </button>
-                                    ${buildStatusSelect(order)}
+                                <div class="flex flex-col md:flex-row justify-between items-center gap-3 mt-4 border-t pt-4 border-slate-100">
+                                    <div class="flex items-center gap-2 text-sm text-slate-500 bg-slate-50 px-4 py-2 rounded-lg">
+                                        <i data-lucide="truck" class="w-4 h-4 text-orange-500"></i>
+                                        <span class="font-bold">Incoterms:</span> DDP
+                                        <span class="mx-2">|</span>
+                                        <span class="font-bold">WRO Tracking:</span> Pending Warehouse
+                                    </div>
+                                    <div class="flex justify-end gap-3">
+                                        <button onclick="window.printInvoice(${order.order_id})" class="px-6 py-2 border border-slate-300 rounded-lg hover:bg-slate-50 font-bold text-sm text-slate-600 transition-all flex items-center gap-2">
+                                            <i data-lucide="file-text" class="w-4 h-4"></i> Comm. Invoice
+                                        </button>
+                                        ${order.status !== 'delivered' && order.status !== 'cancelled' ? `
+                                        <button onclick="window.submitWRO(${order.order_id})" class="px-6 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 font-bold text-sm transition-all flex items-center gap-2 shadow-lg shadow-orange-200">
+                                            <i data-lucide="package-check" class="w-4 h-4"></i> Send WRO
+                                        </button>
+                                        ` : ''}
+                                        ${buildStatusSelect(order)}
+                                    </div>
                                 </div>
                             </div>
                         `).join('') : '<div class="glass-card p-12 text-center text-slate-400">No orders yet.</div>'}
@@ -6190,83 +6240,96 @@ export const Pages = {
             `;
         },
 
-        reports() {
+        analytics() {
+            const stats = State.getSupplierStats() || {};
+            const views = stats.page_views || [12, 19, 15, 25, 22, 30, 28, 35, 40, 38, 45, 50];
+            const maxView = Math.max(...views, 1);
+            const pathData = views.map((v, i) => `${(i / (views.length - 1)) * 100},${100 - (v / maxView) * 100}`).join(' L ');
+
             return `
                 <div class="max-w-7xl mx-auto">
-                    <h1 class="text-3xl font-bold mb-8">Analytics & Reports</h1>
+                    <h1 class="text-3xl font-bold mb-8 text-slate-800">Premium Analytics Dashboard</h1>
 
                     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-                        ${Components.StatCard('Total Sales', '$142,394', 'dollar-sign', 'green', 15)}
-                        ${Components.StatCard('Avg Order Value', '$3,150', 'shopping-bag', 'blue', 8)}
-                        ${Components.StatCard('Total Orders', '156', 'package', 'purple')}
-                        ${Components.StatCard('Conversion Rate', '4.2%', 'activity', 'orange', -2)}
+                        ${Components.StatCard('Total Unique Visitors', '12,450', 'users', 'blue', 12)}
+                        ${Components.StatCard('Page Views', '45,230', 'eye', 'purple', 8)}
+                        ${Components.StatCard('Conversion Rate', '3.8%', 'activity', 'green', 1.2)}
+                        ${Components.StatCard('Bounce Rate', '42%', 'corner-up-left', 'orange', -2)}
                     </div>
 
-                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
-                        <div class="lg:col-span-2 glass-card p-6 rounded-2xl">
-                            <h3 class="font-bold mb-6">Revenue Trend</h3>
-                            <div class="h-64 flex items-end justify-between gap-2">
-                                ${[35, 45, 30, 60, 75, 50, 65, 80, 70, 90, 85, 95].map(h => `
-                                    <div class="w-full bg-blue-100 rounded-t-lg relative group h-full">
-                                        <div class="absolute bottom-0 w-full bg-blue-500 rounded-t-lg transition-all group-hover:bg-blue-600" style="height: ${h}%"></div>
-                                        <div class="absolute -top-10 left-1/2 -translate-x-1/2 bg-slate-800 text-white text-xs py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition-opacity">$${h}k</div>
-                                    </div>
-                                `).join('')}
-                            </div>
-                            <div class="flex justify-between mt-4 text-xs text-slate-400 font-bold uppercase">
-                                <span>Jan</span><span>Feb</span><span>Mar</span><span>Apr</span><span>May</span><span>Jun</span>
-                                <span>Jul</span><span>Aug</span><span>Sep</span><span>Oct</span><span>Nov</span><span>Dec</span>
-                            </div>
-                        </div>
-
-                        <div class="glass-card p-6 rounded-2xl">
-                            <h3 class="font-bold mb-6">Sales by Category</h3>
-                            <div class="space-y-6">
-                                ${[
-                    { label: 'Electronics', val: 75, color: 'blue' },
-                    { label: 'Accessories', val: 55, color: 'purple' },
-                    { label: 'Wearables', val: 35, color: 'green' },
-                    { label: 'Home Tech', val: 20, color: 'orange' }
-                ].map(item => `
-                                    <div>
-                                        <div class="flex justify-between text-sm font-bold mb-2">
-                                            <span>${item.label}</span>
-                                            <span>${item.val}%</span>
-                                        </div>
-                                        <div class="w-full h-3 bg-slate-100 rounded-full overflow-hidden">
-                                            <div class="h-full bg-${item.color}-500 rounded-full" style="width: ${item.val}%"></div>
-                                        </div>
-                                    </div>
-                                `).join('')}
+                    <div class="glass-card p-8 rounded-3xl mb-8 relative overflow-hidden bg-white/60 backdrop-blur-3xl shadow-xl shadow-blue-900/5 border border-white">
+                        <h3 class="font-bold text-xl mb-6 text-slate-800 flex items-center gap-2">
+                            <i data-lucide="trending-up" class="w-6 h-6 text-blue-600"></i> Traffic Trend
+                        </h3>
+                        <div class="h-64 relative w-full">
+                            <!-- SVG Curve Graph -->
+                            <svg class="w-full h-full drop-shadow-xl" preserveAspectRatio="none" viewBox="0 0 100 100">
+                                <defs>
+                                    <linearGradient id="gradientLine" x1="0%" y1="0%" x2="100%" y2="0%">
+                                        <stop offset="0%" stop-color="#3b82f6" />
+                                        <stop offset="50%" stop-color="#8b5cf6" />
+                                        <stop offset="100%" stop-color="#ec4899" />
+                                    </linearGradient>
+                                    <linearGradient id="gradientFill" x1="0%" y1="0%" x2="0%" y2="100%">
+                                        <stop offset="0%" stop-color="#3b82f6" stop-opacity="0.3" />
+                                        <stop offset="100%" stop-color="#3b82f6" stop-opacity="0" />
+                                    </linearGradient>
+                                </defs>
+                                <path d="M 0,100 L 0,${100 - (views[0] / maxView) * 100} L ${pathData} L 100,100 Z" fill="url(#gradientFill)" />
+                                <path d="M ${pathData}" fill="none" stroke="url(#gradientLine)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" class="animate-[dash_3s_ease-out_forwards] [stroke-dasharray:1000] [stroke-dashoffset:1000]" />
+                            </svg>
+                            <!-- Grid Lines -->
+                            <div class="absolute inset-0 flex flex-col justify-between pointer-events-none opacity-20">
+                                <div class="border-t border-slate-400 w-full"></div>
+                                <div class="border-t border-slate-400 w-full"></div>
+                                <div class="border-t border-slate-400 w-full"></div>
+                                <div class="border-t border-slate-400 w-full"></div>
+                                <div class="border-t border-slate-400 w-full"></div>
                             </div>
                         </div>
+                        <div class="flex justify-between mt-4 text-xs font-bold text-slate-400 uppercase tracking-widest">
+                            <span>Jan</span><span>Feb</span><span>Mar</span><span>Apr</span><span>May</span><span>Jun</span>
+                            <span>Jul</span><span>Aug</span><span>Sep</span><span>Oct</span><span>Nov</span><span>Dec</span>
+                        </div>
                     </div>
+                </div>
+            `;
+        },
 
-                    <div class="glass-card p-6 rounded-2xl">
-                        <h3 class="font-bold mb-6">Recent Transactions</h3>
-                        <table class="w-full">
-                            <thead>
-                                <tr class="text-left text-xs font-bold text-slate-400 uppercase border-b border-slate-100">
-                                    <th class="pb-4">Transaction ID</th>
-                                    <th class="pb-4">Customer</th>
-                                    <th class="pb-4">Date</th>
-                                    <th class="pb-4">Amount</th>
-                                    <th class="pb-4">Status</th>
-                                </tr>
-                            </thead>
-                            <tbody class="text-sm">
-                                ${Array(5).fill(0).map((_, i) => `
-                                    <tr class="border-b border-slate-50 last:border-0 hover:bg-slate-50 transition-colors">
-                                        <td class="py-4 font-mono">TRX-${Math.random().toString(36).substr(2, 8).toUpperCase()}</td>
-                                        <td class="py-4 font-bold">Client Company ${i + 1}</td>
-                                        <td class="py-4 text-slate-500">Jan ${15 - i}, 2026</td>
-                                        <td class="py-4 font-bold">$${(Math.random() * 5000).toFixed(2)}</td>
-                                        <td class="py-4"><span class="text-green-600 font-bold text-xs bg-green-100 px-2 py-1 rounded-full">Completed</span></td>
-                                    </tr>
-                                `).join('')}
-                            </tbody>
-                        </table>
-                    </div>
+        settings() {
+            return `
+                <div class="max-w-4xl mx-auto">
+                    <h1 class="text-3xl font-bold mb-8 text-slate-800">Supplier Profile Settings</h1>
+                    <form id="supplierSettingsForm" class="space-y-6 glass-card p-8 rounded-3xl" onsubmit="event.preventDefault(); window.updateSupplierProfile(this)">
+                        
+                        <div>
+                            <label class="block text-sm font-bold text-slate-700 mb-2">About Company</label>
+                            <textarea name="about_me" rows="4" class="w-full p-4 bg-slate-50 border border-slate-200 rounded-xl focus:border-blue-500 outline-none" placeholder="Write a compelling story about your manufacturing capabilities..."></textarea>
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-bold text-slate-700 mb-2">Certifications (Comma separated)</label>
+                            <input type="text" name="certifications" class="w-full p-4 bg-slate-50 border border-slate-200 rounded-xl focus:border-blue-500 outline-none" placeholder="e.g. ISO 9001, CE, FDA Approved">
+                            <p class="text-xs text-slate-400 mt-2">These will be displayed as trust badges on your profile.</p>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-bold text-slate-700 mb-2">Factory Virtual Tours (URLs, comma separated)</label>
+                            <input type="text" name="factory_tours" class="w-full p-4 bg-slate-50 border border-slate-200 rounded-xl focus:border-blue-500 outline-none" placeholder="e.g. https://my3dtour.com/factory">
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-bold text-slate-700 mb-2">Verified Production Videos (URLs, comma separated)</label>
+                            <input type="text" name="verified_videos" class="w-full p-4 bg-slate-50 border border-slate-200 rounded-xl focus:border-blue-500 outline-none" placeholder="e.g. https://youtube.com/...">
+                        </div>
+
+                        <div class="pt-6 border-t border-slate-100 flex justify-end">
+                            <button type="submit" class="bg-blue-600 text-white px-8 py-4 rounded-xl font-bold shadow-lg shadow-blue-200 hover:bg-blue-700 transition-all flex items-center gap-2">
+                                <i data-lucide="save" class="w-5 h-5"></i>
+                                Save Profile Enhancements
+                            </button>
+                        </div>
+                    </form>
                 </div>
             `;
         },
@@ -6503,7 +6566,7 @@ export const Pages = {
                     const colorMap = { consumer: 'blue', business: 'purple', dropshipper: 'green', supplier: 'orange', admin: 'red', warehouse: 'slate' };
                     const labelMap = { consumer: 'Consumers', business: 'Business Accounts', dropshipper: 'Dropshippers', supplier: 'Suppliers', admin: 'Admins', warehouse: 'Warehouse' };
                     const total = stats.total_users || 1;
-                    
+
                     return roles.map(role => {
                         const countObj = stats.user_counts?.find(u => u.role === role);
                         const count = countObj ? Number(countObj.count) : 0;
@@ -7376,7 +7439,7 @@ window.openInvoice = (orderId) => {
 
 window.completeReceipt = async (orderId) => {
     if (!confirm('Are you sure you want to mark this receipt as completed? This will update inventory levels.')) return;
-    
+
     try {
         const success = await State.updateOrderStatus(orderId, 'received');
         if (success) {
@@ -7424,6 +7487,40 @@ window.handlePayout = async (event) => {
 
     submitBtn.disabled = false;
     submitBtn.innerText = originalText;
+};
+
+window.submitWRO = async (orderId) => {
+    if (!confirm('Submit Warehouse Receiving Order (WRO) with commercial invoice and packing list?')) return;
+    const success = await State.submitWRO(orderId);
+    if (success) {
+        Components.showNotification('WRO sent to warehouse successfully', 'success');
+        Router.refresh();
+    }
+};
+
+window.completeWROReceipt = async (poId) => {
+    if (!confirm('Complete receipt for this WRO? This will update warehouse inventory and process supplier payout.')) return;
+    const success = await State.completeWROReceipt(poId);
+    if (success) {
+        Components.showNotification('WRO Receipt completed, inventory updated', 'success');
+        Router.refresh();
+    }
+};
+
+window.updateSupplierProfile = async (form) => {
+    const formData = new FormData(form);
+    const profileData = {
+        about_me: formData.get('about_me'),
+        certifications: formData.get('certifications').split(',').map(s => s.trim()).filter(Boolean),
+        factory_tours: formData.get('factory_tours').split(',').map(s => s.trim()).filter(Boolean),
+        verified_videos: formData.get('verified_videos').split(',').map(s => s.trim()).filter(Boolean)
+    };
+    const success = await State.updateSupplierProfile(profileData);
+    if (success) {
+        Components.showNotification('Profile enhancements saved', 'success');
+    } else {
+        Components.showNotification('Failed to update profile', 'error');
+    }
 };
 window.editInventory = async (productId, currentStock, currentLocation) => {
     const newStock = prompt(`Update stock for Product ID: ${productId}`, currentStock);
@@ -7813,7 +7910,7 @@ window.submitProduct = async (event, productId) => {
 window.updateCartUI = () => {
     const cart = State.get().cart;
     const total = State.getCartTotal();
-    
+
     // If cart becomes empty, just full re-render
     if (cart.length === 0) {
         Router.navigate('/cart');
@@ -7830,7 +7927,7 @@ window.updateCartUI = () => {
 
     // Update global cart badge
     Components.updateCartBadge();
-    
+
     if (window.lucide) lucide.createIcons();
 };
 
