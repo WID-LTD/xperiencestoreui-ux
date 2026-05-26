@@ -3,7 +3,7 @@
  * Hash-based routing for single-page navigation
  */
 
-import { SEO } from './seo.js?v=3.2.0';
+import { SEO } from './seo.js?v=3.3.0';
 
 export const Router = {
     routes: {},

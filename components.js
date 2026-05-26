@@ -3,8 +3,8 @@
  * Library of reusable components for consistent UI
  */
 
-import { State } from './state.js?v=3.2.0';
-import { Router } from './router.js?v=3.2.0';
+import { State } from './state.js?v=3.3.0';
+import { Router } from './router.js?v=3.3.0';
 
 export const Components = {
     // Search Suggestions Component (Glassmorphism)
@@ -27,7 +27,7 @@ export const Components = {
                     ${results.map(item => `
                         <div onclick="window.handleSuggestionClick('${item.type}', '${item.id || item.slug}')" class="p-3 hover:bg-blue-50/80 cursor-pointer flex items-center gap-4 group transition-all">
                             <div class="w-10 h-10 rounded-lg overflow-hidden bg-slate-100 flex-shrink-0">
-                                <img loading="lazy" src="${item.image || 'assets/placeholder.png'}" class="w-full h-full object-cover group-hover:scale-110 transition-transform" onerror="this.src='https://ui-avatars.com/api/?name=${item.name}&background=random'">
+                                <img loading="lazy" src="${item.image || 'assets/placeholder.png'}" class="w-full h-full object-cover group-hover:scale-110 transition-transform" onerror="this.src='https://ui-avatars.com/api/?name=${item.name}&background=random'" alt="${item.name}">
                             </div>
                             <div class="flex-1 min-w-0">
                                 <h4 class="text-sm font-bold text-slate-800 truncate">${item.name.replace(new RegExp(query, 'gi'), match => `<span class="text-blue-600 underline">${match}</span>`)}</h4>
@@ -848,6 +848,13 @@ export const Components = {
         
         const isActive = menu.classList.toggle('active');
         
+        // Toggle hamburger icon state
+        const hamburger = document.getElementById('mobile-menu-toggle');
+        if (hamburger) hamburger.classList.toggle('open', isActive);
+        
+        // Body scroll lock
+        document.body.style.overflow = isActive ? 'hidden' : '';
+        
         // Force re-render of content when opening to ensure fresh data/role state
         if (isActive && window.updateMobileUI) {
             window.updateMobileUI();
@@ -895,7 +902,7 @@ export const Components = {
                 <div id="campaign-slider-track" class="flex h-full transition-transform duration-700 ease-out">
                     ${campaigns.map(c => `
                         <div class="min-w-full h-full relative cursor-pointer" onclick="Router.navigate('${c.redirect_url}')">
-                            <img src="${c.image_url}" class="w-full h-full object-cover opacity-80" onerror="this.src='/assets/placeholder.png'">
+                            <img src="${c.image_url}" class="w-full h-full object-cover opacity-80" onerror="this.src='/assets/placeholder.png'" alt="${c.title}">
                             <div class="absolute inset-0 bg-gradient-to-t from-slate-900 via-transparent to-transparent"></div>
                             <div class="absolute bottom-10 left-10 text-white max-w-lg">
                                 <h2 class="text-3xl md:text-5xl font-black mb-2 drop-shadow-lg">${c.title}</h2>
@@ -959,13 +966,13 @@ export const Components = {
                 <div class="flex animate-infinite-scroll gap-4 p-2">
                     ${shuffled.map(p => `
                         <a href="#/product/${p.id}" class="flex-shrink-0 w-32 md:w-40 h-full">
-                            <img loading="lazy" src="${State.getMediaUrl(p.id, 0)}" class="w-full h-full object-cover rounded-xl shadow-lg border-2 border-white/20 hover:scale-105 transition-transform" onerror="this.src='/assets/placeholder.png'">
+                            <img loading="lazy" src="${State.getMediaUrl(p.id, 0)}" class="w-full h-full object-cover rounded-xl shadow-lg border-2 border-white/20 hover:scale-105 transition-transform" onerror="this.src='/assets/placeholder.png'" alt="${p.name}">
                         </a>
                     `).join('')}
                     <!-- Duplicate for seamless scroll -->
                     ${shuffled.map(p => `
                         <a href="#/product/${p.id}" class="flex-shrink-0 w-32 md:w-40 h-full">
-                            <img loading="lazy" src="${State.getMediaUrl(p.id, 0)}" class="w-full h-full object-cover rounded-xl shadow-lg border-2 border-white/20 hover:scale-105 transition-transform" onerror="this.src='/assets/placeholder.png'">
+                            <img loading="lazy" src="${State.getMediaUrl(p.id, 0)}" class="w-full h-full object-cover rounded-xl shadow-lg border-2 border-white/20 hover:scale-105 transition-transform" onerror="this.src='/assets/placeholder.png'" alt="${p.name}">
                         </a>
                     `).join('')}
                 </div>

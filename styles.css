@@ -389,18 +389,60 @@ body {
     color: white;
 }
 
-/* Mobile Side Menu States */
-#mobile-side-menu.active {
-    pointer-events: auto !important;
-    visibility: visible !important;
+/* --- Hamburger Button --- */
+.hamburger {
+    width: 40px;
+    height: 40px;
+    position: relative;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    background: transparent;
+    border: none;
+    transition: background 0.2s;
+}
+.hamburger:hover { background: #f1f5f9; }
+.hamburger span {
+    display: block;
+    width: 22px;
+    height: 2.5px;
+    background: #475569;
+    border-radius: 3px;
+    transition: all 0.3s ease;
+    transform-origin: center;
+}
+.hamburger.open span:nth-child(1) {
+    transform: translateY(7.5px) rotate(45deg);
+}
+.hamburger.open span:nth-child(2) {
+    opacity: 0;
+    transform: scaleX(0);
+}
+.hamburger.open span:nth-child(3) {
+    transform: translateY(-7.5px) rotate(-45deg);
 }
 
+/* Mobile Side Menu States */
+#mobile-side-menu {
+    visibility: hidden;
+    transition: visibility 0s linear 0.3s;
+}
+#mobile-side-menu.active {
+    visibility: visible !important;
+    transition: visibility 0s linear 0s;
+}
 #mobile-side-menu.active #mobile-menu-overlay {
     opacity: 1;
+    pointer-events: auto;
 }
-
 #mobile-side-menu.active #mobile-menu-content {
     transform: translateX(0);
+}
+#mobile-side-menu #mobile-menu-overlay {
+    pointer-events: none;
 }
 
 /* Search Suggestions */

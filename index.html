@@ -17,7 +17,7 @@
   <meta property="og:image" content="/assets/logo.png" />
   <meta name="twitter:card" content="summary_large_image" />
     <title>Xperiencestore | Unified eCommerce</title>
-    <link rel="icon" href="assets/favicon.png" />
+    <link rel="icon" href="/assets/favicon.png" />
     <script>
       // =============================================
       // API Base Configuration
@@ -28,15 +28,15 @@
       // Helper: builds a full API URL from a relative path like '/api/orders'
       window.apiUrl = (path) => `${window.API_BASE}${path}`;
       window.LOG_SECRET = 'xperience-log-secret-2026';
-      console.log('XperienceStore UI v3.2.0');
+      console.log('XperienceStore UI v3.3.3');
 
-      // SW Cache Management - v3.2.0: Clear all old caches, then register fresh SW
+      // SW Cache Management - v3.3.3: Clear all old caches, then register fresh SW
       if ('serviceWorker' in navigator) {
           // First, delete all stale caches to ensure new support.js and seo.js are loaded fresh
           if (window.caches) {
               caches.keys().then(keys => {
                   keys.forEach(key => {
-                      if (key !== 'xperiencestore-v3') {
+                      if (key !== 'xperiencestore-v3.3.3') {
                           console.log('[Cache] Deleting stale cache:', key);
                           caches.delete(key);
                       }
@@ -55,7 +55,7 @@
       }
     </script>
     <!-- Tailwind CDN removed for production -->
-    <script type="module" src="logger.js"></script>
+    <script type="module" src="/logger.js"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <link
       rel="stylesheet"
@@ -70,18 +70,18 @@
       href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="dist/output.css" />
+    <link rel="stylesheet" href="/dist/output.css?v=3.3.3" />
   </head>
   <body class="bg-slate-50 font-['Inter'] min-h-screen">
     <nav id="main-nav" class="glass-header sticky top-0 w-full z-[1000] bg-white border-b border-slate-200 shadow-sm">
       <div class="max-w-7xl mx-auto px-4 h-20 flex items-center justify-between gap-4">
         <!-- Brand & Hamburger -->
         <div class="flex items-center gap-3">
-          <button id="mobile-menu-toggle" onclick="Components.toggleMobileMenu()" class="lg:hidden p-2 hover:bg-slate-100 rounded-xl transition-all">
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" data-lucide="menu" aria-hidden="true" class="lucide lucide-menu w-6 h-6 text-slate-700"><path d="M4 5h16"></path><path d="M4 12h16"></path><path d="M4 19h16"></path></svg>
+          <button id="mobile-menu-toggle" aria-label="Toggle menu" class="lg:hidden hamburger p-2 rounded-xl transition-all">
+            <span></span><span></span><span></span>
           </button>
           <div class="flex items-center gap-2 cursor-pointer group" onclick="window.location.hash = '/'">
-            <img src="assets/logo.png" alt="Xperincestore Logo" class="h-10 w-10 sm:h-12 sm:w-12 object-contain transition-transform group-hover:scale-105" />
+            <img src="/assets/logo.png" alt="Xperincestore Logo" class="h-10 w-10 sm:h-12 sm:w-12 object-contain transition-transform group-hover:scale-105" />
             <span class="font-extrabold text-xl sm:text-2xl text-blue-900 tracking-tight hidden sm:block">Xperince<span class="text-blue-600 font-light">Store</span></span>
           </div>
         </div>
@@ -194,7 +194,7 @@
     </div>
 
     <!-- Mobile Slide-out Menu -->
-    <div id="mobile-side-menu" class="fixed inset-0 z-[2500] pointer-events-none transition-all duration-300">
+    <div id="mobile-side-menu" class="fixed inset-0 z-[2500] invisible">
         <div id="mobile-menu-overlay" class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm opacity-0 transition-opacity duration-300"></div>
         <div id="mobile-menu-content" class="absolute top-0 right-0 bottom-0 w-80 bg-white shadow-2xl translate-x-full transition-transform duration-300 p-6">
             <!-- Injected via Components.MobileMenu -->
@@ -274,7 +274,7 @@
           <div>
             <div class="flex items-center gap-2 mb-4">
               <img
-                src="assets/logo.png"
+                src="/assets/logo.png"
                 alt="X"
                 class="h-8 w-8 object-contain"
               />
@@ -382,6 +382,6 @@
       class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[2000] flex items-center justify-center p-4"
     ></div>
 
-    <script src="script.js?v=3.2.0" type="module"></script>
+    <script src="/script.js?v=3.3.3" type="module"></script>
 </body>
 </html>

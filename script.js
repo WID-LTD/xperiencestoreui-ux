@@ -3,17 +3,17 @@
  * Wires together router, state, pages, and components
  */
 
-import { Auth } from './auth.js?v=3.2.0';
-import { Router } from './router.js?v=3.2.0';
-import { State } from './state.js?v=3.2.0';
-import { Data } from './data.js?v=3.2.0';
-import { Components } from './components.js?v=3.2.0';
-import { Pages } from './pages.js?v=3.2.0';
-import { SupportPages } from './support.js?v=3.2.0';
-import { Payment } from './payment.js?v=3.2.0';
-import { PaymentCheckoutModal } from './paymentModal.js?v=3.2.0';
-import { Gigo } from './gigo.js?v=3.2.0';
-import { Chat } from './chat.js?v=3.2.0';
+import { Auth } from './auth.js?v=3.3.0';
+import { Router } from './router.js?v=3.3.0';
+import { State } from './state.js?v=3.3.0';
+import { Data } from './data.js?v=3.3.0';
+import { Components } from './components.js?v=3.3.0';
+import { Pages } from './pages.js?v=3.3.0';
+import { SupportPages } from './support.js?v=3.3.0';
+import { Payment } from './payment.js?v=3.3.0';
+import { PaymentCheckoutModal } from './paymentModal.js?v=3.3.0';
+import { Gigo } from './gigo.js?v=3.3.0';
+import { Chat } from './chat.js?v=3.3.0';
 
 
 // Initialize application
@@ -134,20 +134,13 @@ async function initApp() {
     // Show onboarding for new/role-switched users
     setTimeout(() => Components.showOnboardingIfNew(), 1500);
 
-    // Setup mobile menu toggle
+    // Setup mobile menu toggle (hamburger button + overlay)
     const menuToggle = document.getElementById('mobile-menu-toggle');
-    if (menuToggle) {
-        menuToggle.onclick = () => Components.toggleMobileMenu();
-    }
-    
-    // Initial UI Update for mobile
-    updateMobileUI();
+    if (menuToggle) menuToggle.onclick = () => Components.toggleMobileMenu();
     const menuOverlay = document.getElementById('mobile-menu-overlay');
-    if (menuOverlay) {
-        menuOverlay.onclick = () => Components.toggleMobileMenu();
-    }
+    if (menuOverlay) menuOverlay.onclick = () => Components.toggleMobileMenu();
 
-    // Initial mobile nav/menu injection
+    // Initial UI Update for mobile
     updateMobileUI();
 
     // Update user UI
