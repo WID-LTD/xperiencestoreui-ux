@@ -3,12 +3,12 @@
  * Split from pages.js to enable lazy loading
  */
 
-import { Data } from '../data.js?v=3.3.0';
-import { State } from '../state.js?v=3.3.0';
-import { Router } from '../router.js?v=3.3.0';
-import { Components } from '../components.js?v=3.3.0';
-import { Tracking } from '../tracking.js?v=3.3.0';
-import { Auth } from '../auth.js?v=3.3.0';
+import { Data } from '../data.js?v=3.3.4';
+import { State } from '../state.js?v=3.3.4';
+import { Router } from '../router.js?v=3.3.4';
+import { Components } from '../components.js?v=3.3.4';
+import { Tracking } from '../tracking.js?v=3.3.4';
+import { Auth } from '../auth.js?v=3.3.4';
 export const supplier = {
         home() {
             const isLoading = State.isLoading();

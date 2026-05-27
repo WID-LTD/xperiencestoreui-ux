@@ -3,19 +3,19 @@
  * Centralized page rendering for all user types
  */
 
-import { Data } from './data.js?v=3.3.0';
-import { State } from './state.js?v=3.3.0';
-import { Router } from './router.js?v=3.3.0';
-import { Components } from './components.js?v=3.3.0';
-import { Tracking } from './tracking.js?v=3.3.0';
-import { Auth } from './auth.js?v=3.3.0';
+import { Data } from './data.js?v=3.3.4';
+import { State } from './state.js?v=3.3.4';
+import { Router } from './router.js?v=3.3.4';
+import { Components } from './components.js?v=3.3.4';
+import { Tracking } from './tracking.js?v=3.3.4';
+import { Auth } from './auth.js?v=3.3.4';
 
-import { consumer } from './pages/consumer.js?v=3.3.1';
-import { business } from './pages/business.js?v=3.3.1';
-import { dropshipper } from './pages/dropshipper.js?v=3.3.1';
-import { supplier } from './pages/supplier.js?v=3.3.1';
-import { admin } from './pages/admin.js?v=3.3.1';
-import { warehouse } from './pages/warehouse.js?v=3.3.1';
+import { consumer } from './pages/consumer.js?v=3.3.4';
+import { business } from './pages/business.js?v=3.3.4';
+import { dropshipper } from './pages/dropshipper.js?v=3.3.4';
+import { supplier } from './pages/supplier.js?v=3.3.4';
+import { admin } from './pages/admin.js?v=3.3.4';
+import { warehouse } from './pages/warehouse.js?v=3.3.4';
 
 export const Pages = {
     consumer,

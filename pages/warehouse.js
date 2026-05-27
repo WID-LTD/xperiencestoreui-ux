@@ -1,6 +1,6 @@
-import { State } from '../state.js?v=3.3.1';
-import { Router } from '../router.js?v=3.3.1';
-import { Components } from '../components.js?v=3.3.1';
+import { State } from '../state.js?v=3.3.4';
+import { Router } from '../router.js?v=3.3.4';
+import { Components } from '../components.js?v=3.3.4';
 
 export const warehouse = {
 

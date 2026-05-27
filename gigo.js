@@ -1,4 +1,4 @@
-import { Auth } from './auth.js?v=3.3.0';
+import { Auth } from './auth.js?v=3.3.4';
 
 export const Gigo = {
     isOpen: false,

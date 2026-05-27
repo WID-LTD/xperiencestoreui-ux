@@ -3,8 +3,8 @@
  * Library of reusable components for consistent UI
  */
 
-import { State } from './state.js?v=3.3.0';
-import { Router } from './router.js?v=3.3.0';
+import { State } from './state.js?v=3.3.4';
+import { Router } from './router.js?v=3.3.4';
 
 export const Components = {
     // Search Suggestions Component (Glassmorphism)

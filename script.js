@@ -3,17 +3,17 @@
  * Wires together router, state, pages, and components
  */
 
-import { Auth } from './auth.js?v=3.3.0';
-import { Router } from './router.js?v=3.3.0';
-import { State } from './state.js?v=3.3.0';
-import { Data } from './data.js?v=3.3.0';
-import { Components } from './components.js?v=3.3.0';
-import { Pages } from './pages.js?v=3.3.0';
-import { SupportPages } from './support.js?v=3.3.0';
-import { Payment } from './payment.js?v=3.3.0';
-import { PaymentCheckoutModal } from './paymentModal.js?v=3.3.0';
-import { Gigo } from './gigo.js?v=3.3.0';
-import { Chat } from './chat.js?v=3.3.0';
+import { Auth } from './auth.js?v=3.3.4';
+import { Router } from './router.js?v=3.3.4';
+import { State } from './state.js?v=3.3.4';
+import { Data } from './data.js?v=3.3.4';
+import { Components } from './components.js?v=3.3.4';
+import { Pages } from './pages.js?v=3.3.4';
+import { SupportPages } from './support.js?v=3.3.4';
+import { Payment } from './payment.js?v=3.3.4';
+import { PaymentCheckoutModal } from './paymentModal.js?v=3.3.4';
+import { Gigo } from './gigo.js?v=3.3.4';
+import { Chat } from './chat.js?v=3.3.4';
 
 
 // Initialize application

@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "description": "Xperiencestore UI/UX Frontend with Tailwind CSS",
   "scripts": {
-    "build:css": "tailwindcss -i ./src/input.css -o ./dist/output.css",
+    "build:css": "tailwindcss -i ./src/input.css -o ./dist/output.css -c ./tailwind.config.js",
     "watch:css": "tailwindcss -i ./src/input.css -o ./dist/output.css --watch",
     "start": "node server.js"
   },
