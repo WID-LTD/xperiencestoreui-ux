@@ -728,6 +728,22 @@ export const consumer = {
                 return '';
             }
 
+            const activeStorefront = localStorage.getItem('active_storefront');
+            if (activeStorefront && !Auth.isLoggedIn()) {
+                setTimeout(() => {
+                    if (window.showGhostLoginModal) window.showGhostLoginModal(activeStorefront);
+                }, 0);
+                return `<div class="p-8 text-center"><i data-lucide="loader-2" class="w-8 h-8 animate-spin mx-auto text-blue-600"></i><p class="mt-4 text-slate-500 font-bold">Creating secure session...</p></div>`;
+            }
+
+            const user = Auth.getUserSession();
+            if (user && !user.is_verified && !activeStorefront) {
+                setTimeout(() => {
+                    if (window.showBindEmailModal) window.showBindEmailModal();
+                }, 0);
+                return `<div class="p-8 text-center"><i data-lucide="alert-circle" class="w-12 h-12 mx-auto text-red-500 mb-4"></i><h3 class="text-xl font-bold mb-2">Email Verification Required</h3><p class="text-slate-500 mb-6">You must verify your email address before placing an order on the main store.</p><button onclick="window.showBindEmailModal()" class="bg-blue-600 text-white px-6 py-3 rounded-xl font-bold hover:bg-blue-700">Verify Email</button></div>`;
+            }
+
             // Default payment method
             window.selectedPaymentMethod = 'card';
 
@@ -1064,7 +1080,8 @@ export const consumer = {
                         paymentGateway: method,
                         userCurrency: 'NGN',
                         shippingAddress: `${fname} ${lname}, ${address}, ${city}, ${country}. Ph: ${phone}`,
-                        notes: 'Web order'
+                        notes: 'Web order',
+                        storeSlug: localStorage.getItem('active_storefront')
                     })
                 });
 
@@ -1596,7 +1613,7 @@ export const consumer = {
                 };
 
                 window.deleteAddress = async (id) => {
-                    if (!confirm('Are you sure you want to delete this address?')) return;
+                    if (!(await Components.ConfirmAsync('Confirm Action', 'Are you sure you want to delete this address?'))) return;
                     try {
                         const res = await fetch(`/api/addresses/${id}`, {
                             method: 'DELETE',
@@ -1702,7 +1719,10 @@ export const consumer = {
                                     ` : `<input type="hidden" id="p-company">`}
                                     <div class="grid grid-cols-2 gap-4">
                                         <div>
-                                            <label class="text-xs font-bold text-slate-600 ml-1">EMAIL</label>
+                                            <label class="text-xs font-bold text-slate-600 ml-1 flex items-center justify-between">
+                                                EMAIL
+                                                ${!user.is_verified ? '<span class="px-2 py-0.5 rounded-full bg-red-100 text-red-600 text-[10px] font-black uppercase flex items-center gap-1"><i data-lucide="alert-circle" class="w-3 h-3"></i> Unverified</span>' : '<span class="px-2 py-0.5 rounded-full bg-green-100 text-green-600 text-[10px] font-black uppercase flex items-center gap-1"><i data-lucide="check-circle-2" class="w-3 h-3"></i> Verified</span>'}
+                                            </label>
                                             <input type="email" value="${user.email}" disabled class="w-full p-3 rounded-xl border bg-slate-100 text-slate-500 cursor-not-allowed">
                                         </div>
                                         <div>

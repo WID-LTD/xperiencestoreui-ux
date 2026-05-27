@@ -32,6 +32,7 @@ window.isLoggedIn = () => Auth.isLoggedIn();
 window.updateMobileUI = updateMobileUI;
 window.updateUserUI = updateUserUI;
 window.updateNotificationsUI = updateNotificationsUI;
+window.initApp = initApp;
 window.Router = Router;
 window.State = State;
 window.Auth = Auth;
@@ -347,6 +348,13 @@ function initializeRouter() {
 }
 
 function renderHomePage() {
+    if (!Auth.isLoggedIn()) {
+        const activeStorefront = localStorage.getItem('active_storefront');
+        if (activeStorefront) {
+            return Router.navigate(`/dropshipper/store/${activeStorefront}`, true);
+        }
+    }
+    
     const role = State.getUserRole();
 
     switch (role) {
@@ -596,18 +604,23 @@ function setupNavigation() {
 
 function setupUserDropdown() {
     // Setup user dropdown
-    const profileTrigger = document.getElementById('profile-area');
+    const profileArea = document.getElementById('profile-area');
+    const profileTrigger = document.getElementById('profile-trigger');
     const userDropdown = document.getElementById('user-dropdown');
     const logoutBtn = document.getElementById('logout-btn');
 
-    if (profileTrigger && userDropdown) {
+    if (profileTrigger && userDropdown && profileArea) {
         profileTrigger.addEventListener('click', (e) => {
             e.stopPropagation();
             userDropdown.classList.toggle('hidden');
         });
 
+        userDropdown.addEventListener('click', (e) => {
+            e.stopPropagation();
+        });
+
         document.addEventListener('click', (e) => {
-            if (!profileTrigger.contains(e.target)) {
+            if (!profileArea.contains(e.target)) {
                 userDropdown.classList.add('hidden');
             }
         });
@@ -640,7 +653,7 @@ window.switchUserRole = async (newRole) => {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${session.token}`
             },
-            body: JSON.stringify({ newRole })
+            body: JSON.stringify({ role: newRole })
         });
 
         const data = await response.json();
@@ -1199,7 +1212,7 @@ window.pauseCoupon = async (id) => {
 };
 
 window.deleteCoupon = async (id) => {
-    if (!confirm('Are you sure you want to delete this coupon?')) return;
+    if (!(await Components.ConfirmAsync('Confirm Action', 'Are you sure you want to delete this coupon?'))) return;
     try {
         const res = await fetch(`${window.API_BASE}/api/admin/coupons/${id}`, {
             method: 'DELETE',
@@ -1550,4 +1563,167 @@ window.createCoupon = () => {
             submitBtn.textContent = 'Create Coupon';
         }
     };
+};
+
+window.showConfirmDialog = (title, message, onConfirm) => {
+    const modal = document.createElement('div');
+    modal.className = 'fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[4000] flex items-center justify-center p-4';
+    modal.innerHTML = `
+        <div class="glass-card w-full max-w-sm p-8 rounded-[2.5rem] bg-white shadow-2xl relative animate-in fade-in zoom-in duration-300">
+            <h2 class="text-2xl font-black text-slate-900 mb-2 text-center">${title}</h2>
+            <p class="text-slate-500 font-medium mb-8 text-center">${message}</p>
+            <div class="flex gap-4">
+                <button id="cancel-btn" class="flex-1 py-3 text-slate-500 font-black tracking-widest hover:bg-slate-50 rounded-xl transition-all">Cancel</button>
+                <button id="confirm-btn" class="flex-1 py-3 bg-red-600 text-white rounded-xl font-black tracking-widest shadow-xl shadow-red-200 hover:bg-red-700 hover:-translate-y-1 transition-all">Confirm</button>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(modal);
+
+    document.getElementById('cancel-btn').onclick = () => modal.remove();
+    document.getElementById('confirm-btn').onclick = () => {
+        modal.remove();
+        if (onConfirm) onConfirm();
+    };
+};
+
+window.showGhostLoginModal = (storeSlug) => {
+    const modal = document.createElement('div');
+    modal.className = 'fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[3000] flex items-center justify-center p-4';
+    modal.innerHTML = `
+        <div class="glass-card w-full max-w-md p-8 rounded-[2.5rem] bg-white shadow-2xl relative animate-in fade-in zoom-in duration-300">
+            <button onclick="this.closest('div.fixed').remove()" class="absolute top-6 right-6 p-2 hover:bg-slate-100 rounded-xl transition-all">
+                <i data-lucide="x" class="w-6 h-6 text-slate-400"></i>
+            </button>
+            <div class="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-6 text-blue-600">
+                <i data-lucide="user-plus" class="w-8 h-8"></i>
+            </div>
+            <h2 class="text-3xl font-black text-center text-slate-900 mb-2">Guest Checkout</h2>
+            <p class="text-slate-500 text-center font-medium mb-8">We will automatically create a secure account for you to track this order.</p>
+            
+            <button id="ghost-login-btn" class="w-full py-4 bg-blue-600 text-white rounded-2xl font-black tracking-widest shadow-xl shadow-blue-200 hover:bg-blue-700 hover:-translate-y-1 transition-all flex items-center justify-center gap-2">
+                Continue to Payment <i data-lucide="arrow-right" class="w-5 h-5"></i>
+            </button>
+            <p class="text-center text-xs text-slate-400 mt-4">You can update your account details later.</p>
+        </div>
+    `;
+    document.body.appendChild(modal);
+    if(window.lucide) window.lucide.createIcons();
+
+    document.getElementById('ghost-login-btn').onclick = async function() {
+        this.disabled = true;
+        this.innerHTML = '<i data-lucide="loader-2" class="w-6 h-6 animate-spin mx-auto"></i>';
+        if(window.lucide) window.lucide.createIcons();
+        
+        const result = await Auth.ghostRegister(storeSlug);
+        if (result.success) {
+            modal.remove();
+            State.notify('Account created successfully. Continuing to checkout...', 'success');
+            Router.navigate('/checkout', true);
+        } else {
+            State.notify(result.message || 'Failed to create guest account', 'error');
+            this.disabled = false;
+            this.innerHTML = 'Continue to Payment <i data-lucide="arrow-right" class="w-5 h-5"></i>';
+            if(window.lucide) window.lucide.createIcons();
+        }
+    };
+};
+
+window.showBindEmailModal = () => {
+    const modal = document.createElement('div');
+    modal.className = 'fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[3000] flex items-center justify-center p-4';
+    modal.innerHTML = `
+        <div class="glass-card w-full max-w-md p-8 rounded-[2.5rem] bg-white shadow-2xl relative animate-in fade-in zoom-in duration-300">
+            <button onclick="this.closest('div.fixed').remove()" class="absolute top-6 right-6 p-2 hover:bg-slate-100 rounded-xl transition-all">
+                <i data-lucide="x" class="w-6 h-6 text-slate-400"></i>
+            </button>
+            <div class="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-6 text-red-600">
+                <i data-lucide="mail-warning" class="w-8 h-8"></i>
+            </div>
+            <h2 class="text-3xl font-black text-center text-slate-900 mb-2">Verify Email</h2>
+            <p class="text-slate-500 text-center font-medium mb-8">Please link a valid email address to your account to continue placing orders on the main store.</p>
+            
+            <form id="bind-email-form" class="space-y-4">
+                <input type="email" id="bind-email-input" placeholder="Your Email Address" required class="w-full p-4 rounded-xl border bg-slate-50 outline-none focus:border-blue-500 transition-all font-bold">
+                <button type="submit" class="w-full py-4 bg-slate-900 text-white rounded-xl font-bold shadow-xl shadow-slate-200 hover:bg-slate-800 transition-all">
+                    Send Verification Code
+                </button>
+            </form>
+        </div>
+    `;
+    document.body.appendChild(modal);
+    if(window.lucide) window.lucide.createIcons();
+
+    document.getElementById('bind-email-form').onsubmit = async (e) => {
+        e.preventDefault();
+        const email = document.getElementById('bind-email-input').value;
+        const btn = e.target.querySelector('button');
+        btn.disabled = true;
+        btn.innerHTML = '<i data-lucide="loader-2" class="w-6 h-6 animate-spin mx-auto"></i>';
+        if(window.lucide) window.lucide.createIcons();
+        
+        try {
+            const token = Auth.getToken();
+            const res = await fetch(window.apiUrl('/api/auth/bind-email/request'), {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+                body: JSON.stringify({ email })
+            });
+            const data = await res.json();
+            if (res.ok) {
+                State.notify('Verification email sent!', 'success');
+                modal.remove();
+                Router.navigate('/login?verify=true&email=' + encodeURIComponent(email));
+            } else {
+                throw new Error(data.message || 'Failed to request binding');
+            }
+        } catch (error) {
+            State.notify(error.message, 'error');
+            btn.disabled = false;
+            btn.innerHTML = 'Send Verification Code';
+            if(window.lucide) window.lucide.createIcons();
+        }
+    };
+};
+
+window.shipOrder = async (orderId) => {
+    const trackingInput = document.getElementById(`tracking-${orderId}`);
+    const carrierInput = document.getElementById(`carrier-${orderId}`);
+    
+    if (trackingInput && trackingInput.value) {
+        const trackingNumber = trackingInput.value;
+        const carrierCode = carrierInput.value;
+        
+        window.showConfirmDialog('Ship Order', `Are you sure you want to add tracking number ${trackingNumber} and mark this order as shipped?`, async () => {
+            const success = await State.updateOrderTracking(orderId, {
+                trackingNumber,
+                carrierCode,
+                carrierName: carrierCode
+            });
+            if (success) {
+                await State.updateOrderStatus(orderId, 'shipped');
+                Components.showNotification('Order shipped successfully', 'success');
+                Router.refresh(true);
+            }
+        });
+    } else {
+        Components.showNotification('Please enter a tracking number', 'error');
+    }
+};
+
+window.openInvoice = async (orderId) => {
+    try {
+        const response = await fetch(`${window.API_BASE || '/api'}/warehouse/orders/${orderId}/invoice`, {
+            headers: { 'Authorization': `Bearer ${localStorage.getItem('xperience_session') || ''}` }
+        });
+        if (!response.ok) throw new Error('Failed to fetch commercial invoice');
+        
+        const html = await response.text();
+        const printWindow = window.open('', '_blank');
+        printWindow.document.write(html);
+        printWindow.document.close();
+    } catch (error) {
+        Components.showNotification('Failed to generate commercial invoice', 'error');
+        console.error(error);
+    }
 };

@@ -288,7 +288,7 @@ export const warehouse = {
         },
 
         fulfillment() {
-            const orders = State.getOrders().filter(o => o.status === 'processing');
+            const orders = State.getOrders().filter(o => o.status === 'received');
 
             return `
                 <div class="max-w-7xl mx-auto">
@@ -338,13 +338,30 @@ export const warehouse = {
                                     `).join('')}
                                 </div>
 
+                                <div class="bg-slate-50 rounded-xl p-4 mb-4 grid grid-cols-2 gap-4">
+                                    <div>
+                                        <p class="text-xs font-bold text-slate-500 mb-2">Carrier</p>
+                                        <select id="carrier-${order.id}" class="w-full p-3 rounded-xl border bg-white focus:border-orange-500 outline-none">
+                                            <option value="17track">17Track Default</option>
+                                            <option value="fedex">FedEx</option>
+                                            <option value="ups">UPS</option>
+                                            <option value="usps">USPS</option>
+                                            <option value="dhl">DHL</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <p class="text-xs font-bold text-slate-500 mb-2">Tracking Number</p>
+                                        <input type="text" id="tracking-${order.id}" placeholder="Enter Tracking ID..." class="w-full p-3 rounded-xl border bg-white focus:border-orange-500 outline-none">
+                                    </div>
+                                </div>
+
                                 <div class="flex gap-3">
                                     <button onclick="window.shipOrder(${order.id})" class="flex-1 bg-orange-600 text-white py-3 rounded-xl font-bold hover:bg-orange-700 transition-all">
                                         <i data-lucide="package" class="w-5 h-5 inline mr-2"></i>
-                                        Ship Order
+                                        Add Tracking & Ship
                                     </button>
                                     <button onclick="window.openInvoice(${order.id})" class="border-2 border-slate-300 px-6 rounded-xl font-bold hover:bg-slate-50 transition-all">
-                                        Print Packing Slip
+                                        Print Commercial Invoice
                                     </button>
                                 </div>
                             </div>

@@ -163,7 +163,7 @@ export const dropshipper = {
                             <!-- Store Info -->
                             <div class="glass-card p-6 rounded-2xl">
                                 <h3 class="font-bold mb-4">Store Information</h3>
-                                <form onsubmit="event.preventDefault(); /* Handle store update */" class="space-y-4">
+                                <form onsubmit="event.preventDefault(); window.updateStoreSettings(this);" class="space-y-4">
                                     <div class="grid grid-cols-2 gap-4">
                                         <div>
                                             <label class="text-xs font-bold text-slate-600 ml-1">STORE NAME</label>
@@ -174,6 +174,10 @@ export const dropshipper = {
                                             <input type="text" name="store_slug" value="${store.store_slug}" class="w-full p-3 rounded-xl border bg-white/50 outline-none focus:border-blue-500">
                                         </div>
                                         <div class="col-span-2">
+                                            <label class="text-xs font-bold text-slate-600 ml-1">WHATSAPP CONTACT</label>
+                                            <input type="text" name="whatsapp_contact" value="${store.whatsapp_contact || ''}" class="w-full p-3 rounded-xl border bg-white/50 outline-none focus:border-blue-500" placeholder="+1234567890">
+                                        </div>
+                                        <div class="col-span-2">
                                             <label class="text-xs font-bold text-slate-600 ml-1">DESCRIPTION</label>
                                             <textarea name="description" rows="2" class="w-full p-3 rounded-xl border bg-white/50 outline-none focus:border-blue-500">${store.description || ''}</textarea>
                                         </div>
@@ -182,6 +186,26 @@ export const dropshipper = {
                                         Save Changes
                                     </button>
                                 </form>
+                                <script>
+                                    window.updateStoreSettings = async (form) => {
+                                        const formData = new FormData(form);
+                                        const data = Object.fromEntries(formData.entries());
+                                        const btn = form.querySelector('button[type="submit"]');
+                                        const originalText = btn.innerHTML;
+                                        try {
+                                            btn.innerHTML = '<i data-lucide="loader-2" class="w-5 h-5 animate-spin mx-auto"></i>';
+                                            btn.disabled = true;
+                                            await State.updateStoreSettings(data);
+                                            window.showToast('Store settings updated!', 'success');
+                                        } catch (e) {
+                                            window.showToast('Failed to update store settings', 'error');
+                                        } finally {
+                                            btn.innerHTML = originalText;
+                                            btn.disabled = false;
+                                            if (window.lucide) window.lucide.createIcons();
+                                        }
+                                    };
+                                </script>
                             </div>
 
                             <!-- API Dashboard Section -->
@@ -191,7 +215,7 @@ export const dropshipper = {
                                         <h3 class="font-bold text-xl">API & Developer Dashboard</h3>
                                         <p class="text-slate-500 text-sm">Real-time API access and webhook monitoring</p>
                                     </div>
-                                    <button onclick="Router.navigate('/api-management')" class="bg-slate-100 text-slate-700 px-4 py-2 rounded-lg font-bold text-sm hover:bg-slate-200 transition-all">
+                                    <button onclick="Router.navigate('/dropshipper/api-management')" class="bg-slate-100 text-slate-700 px-4 py-2 rounded-lg font-bold text-sm hover:bg-slate-200 transition-all">
                                         Configure API
                                     </button>
                                 </div>
@@ -228,14 +252,14 @@ export const dropshipper = {
                         <div class="glass-card p-6 rounded-2xl h-fit sticky top-8">
                             <h3 class="font-bold mb-4">Management Tools</h3>
                             <div class="space-y-3">
-                                <button onclick="Router.navigate('/api-management')" class="w-full flex items-center justify-between p-4 rounded-xl border hover:bg-blue-50 transition-all group">
+                                <button onclick="Router.navigate('/dropshipper/api-management')" class="w-full flex items-center justify-between p-4 rounded-xl border hover:bg-blue-50 transition-all group">
                                     <div class="flex items-center gap-3">
                                         <i data-lucide="code" class="w-5 h-5 text-blue-600"></i>
                                         <span class="font-bold text-sm">API Settings</span>
                                     </div>
                                     <i data-lucide="chevron-right" class="w-4 h-4 text-slate-400 group-hover:translate-x-1 transition-transform"></i>
                                 </button>
-                                <button onclick="Router.navigate('/social')" class="w-full flex items-center justify-between p-4 rounded-xl border hover:bg-purple-50 transition-all group">
+                                <button onclick="Router.navigate('/dropshipper/social')" class="w-full flex items-center justify-between p-4 rounded-xl border hover:bg-purple-50 transition-all group">
                                     <div class="flex items-center gap-3">
                                         <i data-lucide="share-2" class="w-5 h-5 text-purple-600"></i>
                                         <span class="font-bold text-sm">Social Commerce</span>
@@ -282,11 +306,11 @@ export const dropshipper = {
                                         </div>
                                         <div>
                                             <p class="text-xs text-slate-500">Your Price</p>
-                                            <p class="font-bold text-green-600">${State.formatCurrency(Number(product.price) * 1.35, 'USD')}</p>
+                                            <p class="font-bold text-green-600">${State.formatCurrency(Number(product.price) * 1.35)}</p>
                                         </div>
                                         <div>
                                             <p class="text-xs text-slate-500">Profit</p>
-                                            <p class="font-bold text-blue-600">${State.formatCurrency(Number(product.price) * 0.35, 'USD')}</p>
+                                            <p class="font-bold text-blue-600">${State.formatCurrency(Number(product.price) * 0.35)}</p>
                                         </div>
                                     </div>
                                     <div class="flex items-center justify-between text-xs text-slate-500">
@@ -301,9 +325,11 @@ export const dropshipper = {
             `;
         },
 
-        publicStore() {
+        publicStore(slug) {
+            if (slug) localStorage.setItem('active_storefront', slug);
+            
             const state = State.get();
-            const store = state.dropshipperStore || { store_name: 'My Store', store_slug: 'mystore', description: '' };
+            const store = state.dropshipperStore || { store_name: 'My Store', store_slug: slug || 'mystore', description: '' };
             const products = state.dropshipperProducts || [];
             window.currentProducts = products;
 
@@ -911,7 +937,7 @@ export const dropshipper = {
                                 <button onclick="navigator.clipboard.writeText('${k.api_key}'); Components.showNotification('Key copied!', 'success')" class="p-2 hover:bg-slate-50 text-slate-400 hover:text-blue-600 transition-all">
                                     <i data-lucide="copy" class="w-4 h-4"></i>
                                 </button>
-                                <button onclick="if(confirm('Delete this API key?')) State.deleteAPIKey('${k.id}'); Router.navigate('/api-management')" class="p-2 hover:bg-red-50 text-slate-400 hover:text-red-500 transition-all">
+                                <button onclick="window.showConfirmDialog('Delete API Key?', 'Are you sure you want to delete this API key?', () => { State.deleteAPIKey('${k.id}'); Router.navigate('/api-management', true); })" class="p-2 hover:bg-red-50 text-slate-400 hover:text-red-500 transition-all">
                                     <i data-lucide="trash-2" class="w-4 h-4"></i>
                                 </button>
                             </div>

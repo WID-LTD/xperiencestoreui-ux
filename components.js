@@ -219,6 +219,16 @@ export const Components = {
                             <p class="text-[10px] text-slate-400 font-black uppercase tracking-widest">Order #${orderId}</p>
                             <h4 class="font-black text-slate-800">${itemCount} item${itemCount !== 1 ? 's' : ''}</h4>
                             <p class="text-xs text-slate-500 font-bold">${new Date(date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
+                            ${order.store_name ? `
+                                <div class="mt-2 p-2 bg-slate-50 rounded-lg border border-slate-100">
+                                    <p class="text-[10px] text-slate-600 font-bold flex items-center gap-1"><i data-lucide="store" class="w-3 h-3 text-blue-500"></i> Fulfilled via ${order.store_name}</p>
+                                    ${order.whatsapp_contact ? `
+                                        <a href="https://wa.me/${order.whatsapp_contact.replace(/[^0-9]/g, '')}" target="_blank" class="text-[10px] text-green-600 font-bold flex items-center gap-1 mt-1 hover:underline">
+                                            <i data-lucide="message-circle" class="w-3 h-3"></i> Support Contact
+                                        </a>
+                                    ` : ''}
+                                </div>
+                            ` : ''}
                         </div>
                     </div>
                     <div class="flex sm:flex-col sm:text-right flex-row items-center sm:items-end justify-between sm:justify-start gap-2">
@@ -750,6 +760,17 @@ export const Components = {
                             </div>
                         </div>
                     </div>
+                    
+                    ${isLoggedIn ? `
+                    <div class="mt-4 p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                        <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2">Switch Active Role</p>
+                        <select onchange="window.switchUserRole(this.value)" class="w-full bg-white border border-slate-200 text-xs font-bold rounded-xl p-3 outline-none cursor-pointer focus:border-blue-500">
+                            <option value="consumer" ${role === 'consumer' ? 'selected' : ''}>Consumer</option>
+                            <option value="business" ${role === 'business' ? 'selected' : ''}>Business</option>
+                            <option value="dropshipper" ${role === 'dropshipper' ? 'selected' : ''}>Dropshipper</option>
+                        </select>
+                    </div>
+                    ` : ''}
                 </div>
 
                 <!-- Navigation Links -->
@@ -1105,7 +1126,7 @@ export const Components = {
         }
     },
 
-    ConfirmModal(title, message, onConfirm, confirmText = 'Confirm', type = 'danger') {
+    ConfirmModal(title, message, onConfirm, onCancel = null, confirmText = 'Confirm', type = 'danger') {
         const id = `confirm-modal-${Date.now()}`;
         const accentColor = type === 'danger' ? 'red' : 'blue';
         const icon = type === 'danger' ? 'alert-triangle' : 'help-circle';
@@ -1160,8 +1181,29 @@ export const Components = {
             }
         };
 
-        cancelBtn.onclick = close;
-        modalEl.onclick = (e) => { if (e.target === modalEl) close(); };
+        cancelBtn.onclick = () => {
+            if (onCancel) onCancel();
+            close();
+        };
+        modalEl.onclick = (e) => { 
+            if (e.target === modalEl) {
+                if (onCancel) onCancel();
+                close(); 
+            }
+        };
+    },
+
+    ConfirmAsync(title, message, confirmText = 'Confirm', type = 'danger') {
+        return new Promise((resolve) => {
+            this.ConfirmModal(
+                title,
+                message,
+                () => { resolve(true); return true; },
+                () => { resolve(false); },
+                confirmText,
+                type
+            );
+        });
     },
 
     CouponRow(c) {

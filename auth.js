@@ -88,6 +88,31 @@ export const Auth = {
         }
     },
 
+    // Ghost Register
+    ghostRegister: async (storeSlug) => {
+        try {
+            const response = await fetch(`${API_URL}/ghost-register`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ store_slug: storeSlug })
+            });
+            const data = await response.json();
+            if (response.ok) {
+                Auth.setUserSession(data.role, data);
+                if (window.State) {
+                    window.State.setUser(data.role, data);
+                    window.State.syncToDBAfterLogin().catch(console.warn);
+                }
+                return { success: true, user: data };
+            } else {
+                return { success: false, message: data.message };
+            }
+        } catch (error) {
+            console.error('Ghost Registration Error:', error);
+            return { success: false, message: 'Network error.' };
+        }
+    },
+
     // Verify Email
     verify: async (email, code) => {
         try {

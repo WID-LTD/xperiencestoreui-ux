@@ -982,7 +982,7 @@ export const State = {
     },
 
     async deleteProduct(productId) {
-        if (!confirm('Are you sure you want to delete this product?')) return false;
+        if (!(await Components.ConfirmAsync('Confirm Action', 'Are you sure you want to delete this product?'))) return false;
         try {
             const res = await fetch(`${API}/products/${productId}`, {
                 method: 'DELETE',
@@ -1281,7 +1281,7 @@ export const State = {
     },
 
     async deleteAdminUser(userId) {
-        if (!confirm('Are you sure you want to delete this user? This action cannot be undone.')) return false;
+        if (!(await Components.ConfirmAsync('Confirm Action', 'Are you sure you want to delete this user? This action cannot be undone.'))) return false;
         try {
             const res = await fetch(`${API}/admin/users/${userId}`, {
                 method: 'DELETE',
@@ -1382,7 +1382,7 @@ export const State = {
     },
 
     async deleteAdminProduct(productId) {
-        if (!confirm('Are you sure you want to delete this product?')) return false;
+        if (!(await Components.ConfirmAsync('Confirm Action', 'Are you sure you want to delete this product?'))) return false;
         try {
             const res = await fetch(`${API}/admin/products/${productId}`, {
                 method: 'DELETE',
@@ -1749,7 +1749,7 @@ export const State = {
     },
 
     async deleteCampaign(id) {
-        if (!confirm('Are you sure you want to delete this campaign?')) return;
+        if (!(await Components.ConfirmAsync('Confirm Action', 'Are you sure you want to delete this campaign?'))) return;
         try {
             const res = await fetch(`${API}/admin/campaigns/${id}`, {
                 method: 'DELETE',
