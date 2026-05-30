@@ -27,7 +27,7 @@ export const Components = {
                     ${results.map(item => `
                         <div onclick="window.handleSuggestionClick('${item.type}', '${item.id || item.slug}')" class="p-3 hover:bg-blue-50/80 cursor-pointer flex items-center gap-4 group transition-all">
                             <div class="w-10 h-10 rounded-lg overflow-hidden bg-slate-100 flex-shrink-0">
-                                <img loading="lazy" src="${item.image || 'assets/placeholder.png'}" class="w-full h-full object-cover group-hover:scale-110 transition-transform" onerror="this.src='https://ui-avatars.com/api/?name=${item.name}&background=random'" alt="${item.name}">
+                                <img loading="lazy" src="${item.image || 'assets/placeholder.png'}" class="w-full h-full object-cover group-hover:scale-110 transition-transform" onerror="this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(item.name)}&background=random'" alt="${item.name}">
                             </div>
                             <div class="flex-1 min-w-0">
                                 <h4 class="text-sm font-bold text-slate-800 truncate">${item.name.replace(new RegExp(query, 'gi'), match => `<span class="text-blue-600 underline">${match}</span>`)}</h4>

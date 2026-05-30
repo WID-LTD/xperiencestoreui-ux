@@ -651,16 +651,16 @@ window.switchUserRole = async (newRole) => {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${session.token}`
+                'Authorization': `Bearer ${session.token || Auth.getToken()}`
             },
             body: JSON.stringify({ role: newRole })
         });
 
         const data = await response.json();
         if (response.ok) {
-            // Update local session
-            const updatedUser = { ...session, role: newRole };
-            localStorage.setItem('xperience_user', JSON.stringify(updatedUser));
+            // Update session through Auth module to ensure correct cookies and localstorage
+            const updatedUser = data.user || { ...session, role: newRole };
+            Auth.setUserSession(newRole, updatedUser);
             
             Components.showNotification(`Switched to ${newRole.toUpperCase()} view`, 'success');
             

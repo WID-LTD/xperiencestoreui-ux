@@ -1036,15 +1036,34 @@ export const consumer = {
         async placeOrder() {
             const method = window.selectedPaymentMethod || 'card';
             const total = State.getCartTotal() * 1.08;
-            const session = Auth.getUserSession();
+            let session = Auth.getUserSession();
 
             // Check auth
             if (!session || !session.token) {
-                State.notify('Please login to complete your order', 'warn');
-                // Store redirect target
-                localStorage.setItem('authRedirect', '/checkout');
-                Router.navigate('/login');
-                return;
+                const activeStorefront = localStorage.getItem('active_storefront');
+                if (activeStorefront) {
+                    State.notify('Creating temporary account...', 'info');
+                    const res = await Auth.ghostRegister(activeStorefront);
+                    if (res.success) {
+                        session = res.user;
+                        
+                        // Store credentials temporarily to display on order confirmation page
+                        sessionStorage.setItem('ghost_credentials', JSON.stringify({
+                            email: res.user.email,
+                            password: res.user.password
+                        }));
+                        
+                    } else {
+                        State.notify('Failed to create guest account', 'error');
+                        return;
+                    }
+                } else {
+                    State.notify('Please login to complete your order', 'warn');
+                    // Store redirect target
+                    localStorage.setItem('authRedirect', '/checkout');
+                    Router.navigate('/login');
+                    return;
+                }
             }
 
             // Collect Shipping Data
@@ -1112,6 +1131,32 @@ export const consumer = {
         },
 
         orderConfirmation(orderId) {
+            setTimeout(() => {
+                const credsStr = sessionStorage.getItem('ghost_credentials');
+                if (credsStr) {
+                    try {
+                        const creds = JSON.parse(credsStr);
+                        sessionStorage.removeItem('ghost_credentials');
+                        const modalHtml = `
+                            <div id="ghost-cred-modal" class="fixed inset-0 z-[3000] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-in fade-in zoom-in duration-300">
+                                <div class="bg-white rounded-3xl p-8 max-w-md w-full shadow-2xl relative">
+                                    <button onclick="document.getElementById('ghost-cred-modal').remove()" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600"><i data-lucide="x" class="w-6 h-6"></i></button>
+                                    <h3 class="text-2xl font-bold mb-2 text-slate-900">Guest Account Created</h3>
+                                    <p class="text-slate-600 mb-6 text-sm">We've generated a temporary account for you to track this order.</p>
+                                    <div class="bg-slate-50 p-4 rounded-xl mb-6 font-mono text-sm border-2 border-slate-100 text-left">
+                                        <p class="mb-2"><span class="text-slate-400 font-bold select-none uppercase text-[10px]">Email:</span> <br><span class="text-slate-800 text-base">${creds.email}</span></p>
+                                        <p><span class="text-slate-400 font-bold select-none uppercase text-[10px]">Password:</span> <br><span class="text-slate-800 text-base">${creds.password}</span></p>
+                                    </div>
+                                    <button onclick="document.getElementById('ghost-cred-modal').remove()" class="w-full bg-blue-600 text-white font-bold py-4 rounded-xl hover:bg-blue-700 transition-all">Got it</button>
+                                </div>
+                            </div>
+                        `;
+                        document.body.insertAdjacentHTML('beforeend', modalHtml);
+                        if (window.lucide) window.lucide.createIcons();
+                    } catch(e){}
+                }
+            }, 100);
+
             return `
                 <div class="max-w-3xl mx-auto text-center py-12">
                     <div class="w-24 h-24 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
@@ -1691,7 +1736,7 @@ export const consumer = {
                         <div class="md:col-span-1 space-y-6">
                             <div class="glass-card p-6 rounded-2xl text-center">
                                 <div class="w-24 h-24 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4 overflow-hidden relative group">
-                                    <img loading="lazy" id="profile-img-preview" src="${user.profile_image || 'assets/default-avatar.png'}" class="w-full h-full object-cover" onerror="this.src='https://ui-avatars.com/api/?name=${user.name}'">
+                                    <img loading="lazy" id="profile-img-preview" src="${user.profile_image || 'assets/default-avatar.png'}" class="w-full h-full object-cover" onerror="this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(user.name || '')}'">
                                     <div class="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer" onclick="document.getElementById('p-image').click()">
                                         <i data-lucide="camera" class="w-6 h-6 text-white"></i>
                                     </div>
