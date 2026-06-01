@@ -210,7 +210,7 @@ export const dropshipper = {
 
                             <!-- API Dashboard Section -->
                             <div class="glass-card p-6 rounded-2xl border-l-4 border-blue-600">
-                                <div class="flex items-center justify-between mb-6">
+                                <div class="flex items-center justify-between mb-4">
                                     <div>
                                         <h3 class="font-bold text-xl">API & Developer Dashboard</h3>
                                         <p class="text-slate-500 text-sm">Real-time API access and webhook monitoring</p>
@@ -219,31 +219,11 @@ export const dropshipper = {
                                         Configure API
                                     </button>
                                 </div>
-                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                                    <div class="p-4 bg-slate-50 rounded-xl border border-slate-100">
-                                        <p class="text-[10px] font-bold text-slate-400 uppercase mb-1">Active API Key</p>
-                                        <div class="flex items-center gap-2">
-                                            <code class="text-xs font-mono bg-white px-2 py-1 rounded border overflow-hidden whitespace-nowrap text-ellipsis flex-1">xp_live_************************</code>
-                                            <button class="text-blue-600 hover:text-blue-700"><i data-lucide="copy" class="w-4 h-4"></i></button>
-                                        </div>
-                                    </div>
-                                    <div class="p-4 bg-slate-50 rounded-xl border border-slate-100">
-                                        <p class="text-[10px] font-bold text-slate-400 uppercase mb-1">API Requests (24h)</p>
-                                        <div class="flex items-center justify-between">
-                                            <span class="text-xl font-bold">1,248</span>
-                                            <span class="text-[10px] bg-green-100 text-green-600 px-2 py-0.5 rounded-full font-bold">99.9% Success</span>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="space-y-2">
-                                    <div class="flex items-center justify-between p-3 bg-blue-50/50 rounded-lg text-xs">
-                                        <div class="flex items-center gap-2">
-                                            <span class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
-                                            <span class="font-bold">Webhook Listener:</span>
-                                            <span class="text-slate-500">https://yourstore.com/api/webhooks</span>
-                                        </div>
-                                        <span class="text-blue-600 font-bold">Active</span>
-                                    </div>
+                                <div class="p-6 bg-slate-50 rounded-xl border border-slate-100 text-center">
+                                    <i data-lucide="terminal" class="w-8 h-8 text-blue-400 mx-auto mb-3"></i>
+                                    <h4 class="font-bold text-slate-700 mb-1">Manage Your API Keys</h4>
+                                    <p class="text-xs text-slate-500 mb-4">Generate and manage API keys to connect your dropshipping store with external applications.</p>
+                                    <button onclick="Router.navigate('/dropshipper/api-management')" class="text-blue-600 text-sm font-bold hover:underline">Go to API Settings →</button>
                                 </div>
                             </div>
                         </div>
@@ -1040,65 +1020,17 @@ export const dropshipper = {
                             <h1 class="text-3xl font-bold font-display">Social Commerce</h1>
                             <p class="text-slate-500">Sell directly on social media platforms with automated sync</p>
                         </div>
-                        <div class="flex gap-2">
-                            <button class="bg-blue-600 text-white px-6 py-3 rounded-xl font-bold text-sm shadow-lg shadow-blue-500/20">
-                                Sync Shared Items
-                            </button>
-                        </div>
                     </div>
 
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
-                        ${[
-                    { name: 'Instagram', icon: 'instagram', color: 'pink', status: 'Connected', followers: '12.4k' },
-                    { name: 'Facebook', icon: 'facebook', color: 'blue', status: 'Connected', followers: '8.2k' },
-                    { name: 'TikTok', icon: 'music', color: 'slate', status: 'Connect Now', followers: '-' }
-                ].map(platform => `
-                            <div class="glass-card p-8 rounded-[2rem] text-center group hover:border-${platform.color}-200 transition-all cursor-pointer">
-                                <div class="w-20 h-20 bg-${platform.color}-100 rounded-[2.5rem] flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform">
-                                    <i data-lucide="${platform.icon}" class="w-10 h-10 text-${platform.color}-600"></i>
-                                </div>
-                                <h3 class="text-xl font-bold mb-1">${platform.name} Shopping</h3>
-                                <p class="text-slate-400 text-sm mb-6">${platform.followers} Reach</p>
-                                <span class="px-4 py-2 rounded-xl text-xs font-bold ${platform.status === 'Connected' ? 'bg-green-100 text-green-600' : 'bg-blue-600 text-white'}">
-                                    ${platform.status}
-                                </span>
-                            </div>
-                        `).join('')}
-                    </div>
-
-                    <div class="mt-12 glass-card rounded-[2.5rem] overflow-hidden">
-                        <div class="p-8 border-b flex items-center justify-between bg-slate-50/50">
-                            <h3 class="font-bold text-xl">Top Selling via Social</h3>
-                            <select class="bg-transparent border-none font-bold text-sm text-blue-600 outline-none">
-                                <option>Last 30 Days</option>
-                                <option>Last 7 Days</option>
-                            </select>
+                    <div class="glass-card rounded-[2.5rem] overflow-hidden p-16 text-center border-2 border-dashed border-blue-200 bg-blue-50/50">
+                        <div class="w-24 h-24 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                            <i data-lucide="share-2" class="w-12 h-12 text-blue-600"></i>
                         </div>
-                        <div class="p-8 grid grid-cols-1 md:grid-cols-2 gap-8">
-                            <div class="space-y-6">
-                                ${[1, 2, 3].map(i => `
-                                    <div class="flex items-center gap-4">
-                                        <div class="w-16 h-16 bg-slate-100 rounded-2xl"></div>
-                                        <div class="flex-1">
-                                            <p class="font-bold text-slate-800">Premium Leather Watch</p>
-                                            <p class="text-xs text-slate-400">Sold 45 times via Instagram</p>
-                                        </div>
-                                        <div class="text-right">
-                                            <p class="font-bold text-green-600">₦250k</p>
-                                            <p class="text-[10px] text-slate-400">Earned</p>
-                                        </div>
-                                    </div>
-                                `).join('')}
-                            </div>
-                            <div class="bg-gradient-to-br from-indigo-50 to-purple-50 rounded-[2rem] p-10 flex flex-col items-center justify-center text-center">
-                                <div class="w-16 h-16 bg-white rounded-2xl flex items-center justify-center shadow-sm mb-4">
-                                    <i data-lucide="trending-up" class="w-8 h-8 text-indigo-600"></i>
-                                </div>
-                                <h4 class="text-xl font-bold mb-2">Social Reach Growth</h4>
-                                <p class="text-slate-500 text-sm mb-6">Your social reach has grown by <span class="text-green-600 font-bold">12%</span> this month.</p>
-                                <button class="text-indigo-600 font-bold text-sm hover:underline">View detailed analytics →</button>
-                            </div>
-                        </div>
+                        <h2 class="text-2xl font-bold text-slate-800 mb-4">Coming Soon</h2>
+                        <p class="text-slate-500 max-w-lg mx-auto">
+                            We are actively building integrations with Instagram, Facebook, and TikTok. 
+                            Soon, you will be able to sync your store products directly to your social media shops!
+                        </p>
                     </div>
                 </div>
             `;

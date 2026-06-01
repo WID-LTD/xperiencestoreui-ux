@@ -737,11 +737,13 @@ export const consumer = {
             }
 
             const user = Auth.getUserSession();
-            if (user && !user.is_verified && !activeStorefront) {
+            const isSubAccount = user && user.email && user.email.includes('user+') && user.email.includes('@xperiencestore.store');
+            
+            if (user && isSubAccount && !activeStorefront) {
                 setTimeout(() => {
                     if (window.showBindEmailModal) window.showBindEmailModal();
                 }, 0);
-                return `<div class="p-8 text-center"><i data-lucide="alert-circle" class="w-12 h-12 mx-auto text-red-500 mb-4"></i><h3 class="text-xl font-bold mb-2">Email Verification Required</h3><p class="text-slate-500 mb-6">You must verify your email address before placing an order on the main store.</p><button onclick="window.showBindEmailModal()" class="bg-blue-600 text-white px-6 py-3 rounded-xl font-bold hover:bg-blue-700">Verify Email</button></div>`;
+                return `<div class="p-8 text-center"><i data-lucide="alert-circle" class="w-12 h-12 mx-auto text-red-500 mb-4"></i><h3 class="text-xl font-bold mb-2">Account Update Required</h3><p class="text-slate-500 mb-6">You are using a temporary guest account. Please verify your email address before placing an order on the main store.</p><button onclick="window.showBindEmailModal()" class="bg-blue-600 text-white px-6 py-3 rounded-xl font-bold hover:bg-blue-700">Update Account</button></div>`;
             }
 
             // Default payment method
@@ -1144,8 +1146,24 @@ export const consumer = {
                                     <h3 class="text-2xl font-bold mb-2 text-slate-900">Guest Account Created</h3>
                                     <p class="text-slate-600 mb-6 text-sm">We've generated a temporary account for you to track this order.</p>
                                     <div class="bg-slate-50 p-4 rounded-xl mb-6 font-mono text-sm border-2 border-slate-100 text-left">
-                                        <p class="mb-2"><span class="text-slate-400 font-bold select-none uppercase text-[10px]">Email:</span> <br><span class="text-slate-800 text-base">${creds.email}</span></p>
-                                        <p><span class="text-slate-400 font-bold select-none uppercase text-[10px]">Password:</span> <br><span class="text-slate-800 text-base">${creds.password}</span></p>
+                                        <div class="flex items-center justify-between mb-2">
+                                            <div>
+                                                <span class="text-slate-400 font-bold select-none uppercase text-[10px]">Email:</span><br>
+                                                <span class="text-slate-800 text-base" id="ghost-email">${creds.email}</span>
+                                            </div>
+                                            <button onclick="navigator.clipboard.writeText('${creds.email}'); window.Components.showNotification('Email copied', 'success');" class="p-2 text-slate-400 hover:text-blue-600 bg-white rounded-lg border shadow-sm transition-all" title="Copy Email">
+                                                <i data-lucide="copy" class="w-4 h-4"></i>
+                                            </button>
+                                        </div>
+                                        <div class="flex items-center justify-between">
+                                            <div>
+                                                <span class="text-slate-400 font-bold select-none uppercase text-[10px]">Password:</span><br>
+                                                <span class="text-slate-800 text-base" id="ghost-password">${creds.password}</span>
+                                            </div>
+                                            <button onclick="navigator.clipboard.writeText('${creds.password}'); window.Components.showNotification('Password copied', 'success');" class="p-2 text-slate-400 hover:text-blue-600 bg-white rounded-lg border shadow-sm transition-all" title="Copy Password">
+                                                <i data-lucide="copy" class="w-4 h-4"></i>
+                                            </button>
+                                        </div>
                                     </div>
                                     <button onclick="document.getElementById('ghost-cred-modal').remove()" class="w-full bg-blue-600 text-white font-bold py-4 rounded-xl hover:bg-blue-700 transition-all">Got it</button>
                                 </div>
@@ -1766,7 +1784,7 @@ export const consumer = {
                                         <div>
                                             <label class="text-xs font-bold text-slate-600 ml-1 flex items-center justify-between">
                                                 EMAIL
-                                                ${!user.is_verified ? '<span class="px-2 py-0.5 rounded-full bg-red-100 text-red-600 text-[10px] font-black uppercase flex items-center gap-1"><i data-lucide="alert-circle" class="w-3 h-3"></i> Unverified</span>' : '<span class="px-2 py-0.5 rounded-full bg-green-100 text-green-600 text-[10px] font-black uppercase flex items-center gap-1"><i data-lucide="check-circle-2" class="w-3 h-3"></i> Verified</span>'}
+                                                ${!user.is_verified ? `<span class="px-2 py-0.5 rounded-full bg-red-100 text-red-600 text-[10px] font-black uppercase flex items-center gap-1"><i data-lucide="alert-circle" class="w-3 h-3"></i> Unverified</span> ${user.email && user.email.includes('user+') && user.email.includes('@xperiencestore.store') ? '<button type="button" onclick="window.showBindEmailModal()" class="ml-2 px-2 py-0.5 rounded-full bg-blue-100 text-blue-600 hover:bg-blue-200 text-[10px] font-black uppercase cursor-pointer transition-all">Update Account</button>' : ''}` : '<span class="px-2 py-0.5 rounded-full bg-green-100 text-green-600 text-[10px] font-black uppercase flex items-center gap-1"><i data-lucide="check-circle-2" class="w-3 h-3"></i> Verified</span>'}
                                             </label>
                                             <input type="email" value="${user.email}" disabled class="w-full p-3 rounded-xl border bg-slate-100 text-slate-500 cursor-not-allowed">
                                         </div>

@@ -3,6 +3,7 @@ import { Auth } from './auth.js?v=3.3.4';
 export const Gigo = {
     isOpen: false,
     streamBuffer: '',
+    speakerEnabled: localStorage.getItem('gigo_tts_enabled') === 'true',
 
     init() {
         this.renderTrigger();
@@ -68,8 +69,8 @@ export const Gigo = {
                         <button id="gigo-voice-btn" onclick="Gigo.toggleVoiceInput()" class="p-3 text-slate-400 hover:text-green-600 hover:bg-slate-100 rounded-xl transition-all" title="Voice input">
                             <i data-lucide="mic" class="w-5 h-5"></i>
                         </button>
-                        <button id="gigo-speaker-btn" onclick="Gigo.toggleSpeaker()" class="p-3 text-slate-400 hover:text-indigo-600 hover:bg-slate-100 rounded-xl transition-all" title="Toggle text-to-speech">
-                            <i data-lucide="volume-2" class="w-5 h-5"></i>
+                        <button id="gigo-speaker-btn" onclick="Gigo.toggleSpeaker()" class="p-3 ${this.speakerEnabled ? 'text-indigo-600 bg-indigo-100' : 'text-slate-400 hover:text-indigo-600 hover:bg-slate-100'} rounded-xl transition-all" title="Toggle text-to-speech">
+                            <i data-lucide="${this.speakerEnabled ? 'volume-x' : 'volume-2'}" class="w-5 h-5"></i>
                         </button>
                         <input type="text" id="gigo-input" placeholder="Ask me to find products, track orders..." 
                                class="flex-1 bg-slate-100 border-none rounded-2xl py-4 pl-6 pr-14 text-slate-700 focus:ring-2 focus:ring-blue-500 transition-all outline-none">
@@ -127,11 +128,15 @@ export const Gigo = {
                 const base64 = e.target.result.split(',')[1];
                 this.clearImage();
                 try {
-                    const response = await fetch('/api/chat/gigo/image', {
+                    const response = await fetch(window.apiUrl('/api/chat/gigo/image'), {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json', ...Auth.getAuthHeaders() },
                         body: JSON.stringify({ message: query, image: base64 })
                     });
+                    if (response.status === 401) {
+                        this.appendMessage("Please <a href='#/login' class='text-blue-600 underline font-bold'>sign in</a> to use image analysis.", 'bot');
+                        return;
+                    }
                     const data = await response.json();
                     if (data.reply) this.appendMessage(data.reply, 'bot');
                 } catch (err) {
@@ -146,11 +151,17 @@ export const Gigo = {
         this.streamBuffer = '';
 
         try {
-            const response = await fetch('/api/chat/gigo/stream', {
+            const response = await fetch(window.apiUrl('/api/chat/gigo/stream'), {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', ...Auth.getAuthHeaders() },
                 body: JSON.stringify({ message: query })
             });
+
+            if (response.status === 401) {
+                this.removeTyping(typingId);
+                this.appendMessage("Please <a href='#/login' class='text-blue-600 underline font-bold'>sign in</a> to chat with me.", 'bot');
+                return;
+            }
 
             const reader = response.body.getReader();
             const decoder = new TextDecoder();
@@ -243,7 +254,7 @@ export const Gigo = {
         recognition.start();
         const btn = document.getElementById('gigo-voice-btn');
         btn.classList.add('text-green-600', 'bg-green-100');
-        btn.querySelector('i').setAttribute('data-lucide', 'mic-off');
+        btn.innerHTML = '<i data-lucide="mic-off" class="w-5 h-5"></i>';
         lucide.createIcons();
 
         recognition.onresult = (e) => {
@@ -253,25 +264,26 @@ export const Gigo = {
         };
         recognition.onend = () => {
             btn.classList.remove('text-green-600', 'bg-green-100');
-            btn.querySelector('i').setAttribute('data-lucide', 'mic');
+            btn.innerHTML = '<i data-lucide="mic" class="w-5 h-5"></i>';
             lucide.createIcons();
         };
         recognition.onerror = () => {
             btn.classList.remove('text-green-600', 'bg-green-100');
-            btn.querySelector('i').setAttribute('data-lucide', 'mic');
+            btn.innerHTML = '<i data-lucide="mic" class="w-5 h-5"></i>';
             lucide.createIcons();
         };
     },
 
     toggleSpeaker() {
         this.speakerEnabled = !this.speakerEnabled;
+        localStorage.setItem('gigo_tts_enabled', this.speakerEnabled);
+        
         const btn = document.getElementById('gigo-speaker-btn');
-        const icon = btn.querySelector('i');
         if (this.speakerEnabled) {
-            icon.setAttribute('data-lucide', 'volume-x');
+            btn.innerHTML = '<i data-lucide="volume-x" class="w-5 h-5"></i>';
             btn.classList.add('text-indigo-600', 'bg-indigo-100');
         } else {
-            icon.setAttribute('data-lucide', 'volume-2');
+            btn.innerHTML = '<i data-lucide="volume-2" class="w-5 h-5"></i>';
             btn.classList.remove('text-indigo-600', 'bg-indigo-100');
             window.speechSynthesis.cancel();
         }

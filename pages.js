@@ -929,6 +929,48 @@ export const Pages = {
 
             // If server redirect set payment=success, it already updated the DB
             if (paymentStatus === 'success') {
+                const ghostCredsStr = sessionStorage.getItem('ghost_credentials');
+                let ghostHTML = '';
+                if (ghostCredsStr) {
+                    try {
+                        const creds = JSON.parse(ghostCredsStr);
+                        ghostHTML = `
+                            <div class="mt-8 p-6 bg-slate-50 border border-blue-100 rounded-2xl text-left">
+                                <div class="flex items-center gap-3 mb-4 text-blue-600">
+                                    <i data-lucide="info" class="w-6 h-6"></i>
+                                    <h4 class="font-bold">Guest Account Created</h4>
+                                </div>
+                                <p class="text-sm text-slate-600 mb-4">We've automatically created an account so you can track your order. Please save these temporary credentials:</p>
+                                <div class="space-y-3">
+                                    <div class="flex items-center justify-between p-3 bg-white border border-slate-200 rounded-xl">
+                                        <div>
+                                            <p class="text-xs text-slate-400 font-bold uppercase tracking-wider mb-1">Email</p>
+                                            <p class="font-mono text-sm font-bold text-slate-800" id="ghost-email">${creds.email}</p>
+                                        </div>
+                                        <button onclick="navigator.clipboard.writeText('${creds.email}'); State.notify('Email copied', 'success');" class="p-2 hover:bg-slate-50 rounded-lg text-slate-400 hover:text-blue-600 transition-colors">
+                                            <i data-lucide="copy" class="w-5 h-5"></i>
+                                        </button>
+                                    </div>
+                                    <div class="flex items-center justify-between p-3 bg-white border border-slate-200 rounded-xl">
+                                        <div>
+                                            <p class="text-xs text-slate-400 font-bold uppercase tracking-wider mb-1">Password</p>
+                                            <p class="font-mono text-sm font-bold text-slate-800" id="ghost-pwd">${creds.password}</p>
+                                        </div>
+                                        <button onclick="navigator.clipboard.writeText('${creds.password}'); State.notify('Password copied', 'success');" class="p-2 hover:bg-slate-50 rounded-lg text-slate-400 hover:text-blue-600 transition-colors">
+                                            <i data-lucide="copy" class="w-5 h-5"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="mt-4 text-xs text-slate-500 italic">
+                                    * You can bind your actual email address and change this password later in your Account Settings.
+                                </div>
+                            </div>
+                        `;
+                        // Remove so it only shows once
+                        sessionStorage.removeItem('ghost_credentials');
+                    } catch (e) {}
+                }
+
                 container.innerHTML = `
                     <div class="glass-card p-12 text-center rounded-2xl max-w-md mx-auto mt-10 shadow-xl">
                         <div class="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
@@ -937,9 +979,10 @@ export const Pages = {
                         <h3 class="text-2xl font-bold text-slate-800 mb-2">Payment Successful!</h3>
                         <p class="text-slate-500 mb-2">Your payment has been confirmed and your order is now being processed.</p>
                         ${ref ? `<p class="text-xs text-slate-400 mb-6 font-mono">Ref: ${ref}</p>` : '<br>'}
-                        <button onclick="Router.navigate('/account/orders'); window.location.reload();" class="bg-blue-600 text-white px-8 py-3 rounded-xl font-bold hover:bg-blue-700 transition-all shadow-lg shadow-blue-200">
+                        <button onclick="Router.navigate('/account/orders'); window.location.reload();" class="bg-blue-600 text-white px-8 py-3 rounded-xl font-bold hover:bg-blue-700 transition-all shadow-lg shadow-blue-200 w-full">
                             View My Orders
                         </button>
+                        ${ghostHTML}
                     </div>
                 `;
                 lucide.createIcons();

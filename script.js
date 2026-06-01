@@ -665,6 +665,8 @@ window.switchUserRole = async (newRole) => {
             Components.showNotification(`Switched to ${newRole.toUpperCase()} view`, 'success');
             
             // Reload to apply role-specific routes and UI
+            // Clear the old state cache so the new role gets fresh data
+            localStorage.removeItem('xperince_state');
             setTimeout(() => {
                 window.location.hash = '#/';
                 window.location.reload();
@@ -1632,58 +1634,121 @@ window.showGhostLoginModal = (storeSlug) => {
 window.showBindEmailModal = () => {
     const modal = document.createElement('div');
     modal.className = 'fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[3000] flex items-center justify-center p-4';
-    modal.innerHTML = `
-        <div class="glass-card w-full max-w-md p-8 rounded-[2.5rem] bg-white shadow-2xl relative animate-in fade-in zoom-in duration-300">
-            <button onclick="this.closest('div.fixed').remove()" class="absolute top-6 right-6 p-2 hover:bg-slate-100 rounded-xl transition-all">
-                <i data-lucide="x" class="w-6 h-6 text-slate-400"></i>
-            </button>
-            <div class="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-6 text-red-600">
-                <i data-lucide="mail-warning" class="w-8 h-8"></i>
-            </div>
-            <h2 class="text-3xl font-black text-center text-slate-900 mb-2">Verify Email</h2>
-            <p class="text-slate-500 text-center font-medium mb-8">Please link a valid email address to your account to continue placing orders on the main store.</p>
-            
-            <form id="bind-email-form" class="space-y-4">
-                <input type="email" id="bind-email-input" placeholder="Your Email Address" required class="w-full p-4 rounded-xl border bg-slate-50 outline-none focus:border-blue-500 transition-all font-bold">
-                <button type="submit" class="w-full py-4 bg-slate-900 text-white rounded-xl font-bold shadow-xl shadow-slate-200 hover:bg-slate-800 transition-all">
-                    Send Verification Code
+    
+    const renderStep1 = () => {
+        modal.innerHTML = `
+            <div class="glass-card w-full max-w-md p-8 rounded-[2.5rem] bg-white shadow-2xl relative animate-in fade-in zoom-in duration-300">
+                <button onclick="this.closest('div.fixed').remove()" class="absolute top-6 right-6 p-2 hover:bg-slate-100 rounded-xl transition-all">
+                    <i data-lucide="x" class="w-6 h-6 text-slate-400"></i>
                 </button>
-            </form>
-        </div>
-    `;
-    document.body.appendChild(modal);
-    if(window.lucide) window.lucide.createIcons();
-
-    document.getElementById('bind-email-form').onsubmit = async (e) => {
-        e.preventDefault();
-        const email = document.getElementById('bind-email-input').value;
-        const btn = e.target.querySelector('button');
-        btn.disabled = true;
-        btn.innerHTML = '<i data-lucide="loader-2" class="w-6 h-6 animate-spin mx-auto"></i>';
+                <div class="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-6 text-red-600">
+                    <i data-lucide="mail-warning" class="w-8 h-8"></i>
+                </div>
+                <h2 class="text-3xl font-black text-center text-slate-900 mb-2">Upgrade Account</h2>
+                <p class="text-slate-500 text-center font-medium mb-8">Please link a valid email address to your account to continue placing orders.</p>
+                
+                <form id="bind-email-form" class="space-y-4">
+                    <input type="email" id="bind-email-input" placeholder="Your Email Address" required class="w-full p-4 rounded-xl border bg-slate-50 outline-none focus:border-blue-500 transition-all font-bold">
+                    <button type="submit" class="w-full py-4 bg-slate-900 text-white rounded-xl font-bold shadow-xl shadow-slate-200 hover:bg-slate-800 transition-all">
+                        Send Verification Code
+                    </button>
+                </form>
+            </div>
+        `;
         if(window.lucide) window.lucide.createIcons();
-        
-        try {
-            const token = Auth.getToken();
-            const res = await fetch(window.apiUrl('/api/auth/bind-email/request'), {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
-                body: JSON.stringify({ email })
-            });
-            const data = await res.json();
-            if (res.ok) {
-                State.notify('Verification email sent!', 'success');
-                modal.remove();
-                Router.navigate('/login?verify=true&email=' + encodeURIComponent(email));
-            } else {
-                throw new Error(data.message || 'Failed to request binding');
-            }
-        } catch (error) {
-            State.notify(error.message, 'error');
-            btn.disabled = false;
-            btn.innerHTML = 'Send Verification Code';
+
+        document.getElementById('bind-email-form').onsubmit = async (e) => {
+            e.preventDefault();
+            const email = document.getElementById('bind-email-input').value;
+            const btn = e.target.querySelector('button');
+            btn.disabled = true;
+            btn.innerHTML = '<i data-lucide="loader-2" class="w-6 h-6 animate-spin mx-auto"></i>';
             if(window.lucide) window.lucide.createIcons();
-        }
+            
+            try {
+                const token = Auth.getToken();
+                const res = await fetch(window.apiUrl('/api/auth/bind-email/request'), {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+                    body: JSON.stringify({ email })
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    State.notify('Verification email sent!', 'success');
+                    renderStep2(email);
+                } else {
+                    throw new Error(data.message || 'Failed to request binding');
+                }
+            } catch (error) {
+                console.error(error);
+                State.notify(error.message, 'error');
+                btn.disabled = false;
+                btn.innerHTML = 'Send Verification Code';
+            }
+        };
     };
+
+    const renderStep2 = (email) => {
+        modal.innerHTML = `
+            <div class="glass-card w-full max-w-md p-8 rounded-[2.5rem] bg-white shadow-2xl relative animate-in fade-in zoom-in duration-300">
+                <button onclick="this.closest('div.fixed').remove()" class="absolute top-6 right-6 p-2 hover:bg-slate-100 rounded-xl transition-all">
+                    <i data-lucide="x" class="w-6 h-6 text-slate-400"></i>
+                </button>
+                <div class="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-6 text-blue-600">
+                    <i data-lucide="shield-check" class="w-8 h-8"></i>
+                </div>
+                <h2 class="text-3xl font-black text-center text-slate-900 mb-2">Secure Account</h2>
+                <p class="text-slate-500 text-center font-medium mb-6">Enter the code sent to <span class="font-bold text-slate-800">${email}</span> and set a new password for future logins.</p>
+                
+                <form id="verify-bind-form" class="space-y-4">
+                    <input type="text" id="bind-code-input" placeholder="6-digit Code" maxlength="6" inputmode="numeric" pattern="[0-9]*" required oninput="this.value=this.value.replace(/[^0-9]/g,'')" class="text-center tracking-[0.5em] text-xl w-full p-4 rounded-xl border bg-slate-50 outline-none focus:border-blue-500 transition-all font-bold">
+                    <input type="password" id="bind-password-input" placeholder="New Password" required minlength="6" class="w-full p-4 rounded-xl border bg-slate-50 outline-none focus:border-blue-500 transition-all font-bold">
+                    
+                    <button type="submit" class="w-full py-4 bg-blue-600 text-white rounded-xl font-bold shadow-xl shadow-blue-200 hover:bg-blue-700 transition-all">
+                        Complete Upgrade
+                    </button>
+                </form>
+            </div>
+        `;
+        if(window.lucide) window.lucide.createIcons();
+
+        document.getElementById('verify-bind-form').onsubmit = async (e) => {
+            e.preventDefault();
+            const code = document.getElementById('bind-code-input').value;
+            const newPassword = document.getElementById('bind-password-input').value;
+            const btn = e.target.querySelector('button');
+            btn.disabled = true;
+            btn.innerHTML = '<i data-lucide="loader-2" class="w-6 h-6 animate-spin mx-auto"></i>';
+            if(window.lucide) window.lucide.createIcons();
+            
+            try {
+                const token = Auth.getToken();
+                const res = await fetch(window.apiUrl('/api/auth/bind-email/verify'), {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+                    body: JSON.stringify({ email, code, newPassword })
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    State.notify('Account upgraded successfully!', 'success');
+                    modal.remove();
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 1000);
+                } else {
+                    throw new Error(data.message || 'Failed to verify account');
+                }
+            } catch (error) {
+                console.error(error);
+                State.notify(error.message, 'error');
+                btn.disabled = false;
+                btn.innerHTML = 'Complete Upgrade';
+            }
+        };
+    };
+
+    renderStep1();
+    document.body.appendChild(modal);
 };
 
 window.shipOrder = async (orderId) => {
